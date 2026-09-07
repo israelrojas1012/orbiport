@@ -182,7 +182,7 @@ export default function Home() {
               <div key={lugar.id} style={styles.card} onClick={() => navigate(`/lugar/${lugar.id}`)}>
                 <div style={styles.imgWrap}>
                   <img
-                    src={lugar.foto_url || 'https://via.placeholder.com/600x300/4f46e5/ffffff?text=Brospot'}
+                    src={lugar.foto_url || 'https://via.placeholder.com/600x300/4f46e5/ffffff?text=Orbiport'}
                     alt={lugar.nombre}
                     style={styles.img}
                   />

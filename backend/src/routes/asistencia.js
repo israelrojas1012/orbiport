@@ -17,14 +17,17 @@ router.get('/lista/:lugar_id/:fecha', async (req, res) => {
     const result = await pool.query(`
       SELECT r.id as reserva_id, r.fecha, r.usuario_id,
              u.nombre, u.apellido,
-             h.hora_inicio, h.hora_fin, h.dia,
+             COALESCE(h.hora_inicio, e.hora_inicio) as hora_inicio,
+             COALESCE(h.hora_fin, e.hora_fin) as hora_fin,
+             COALESCE(h.dia, 'Especial') as dia,
              a.asistio, a.id as asistencia_id
       FROM reservas r
       JOIN usuarios u ON r.usuario_id = u.id
-      JOIN horarios_plantilla h ON r.horario_id = h.id
+      LEFT JOIN horarios_plantilla h ON r.horario_id = h.id
+      LEFT JOIN horarios_excepciones e ON r.excepcion_id = e.id
       LEFT JOIN asistencia a ON a.reserva_id = r.id
-      WHERE h.lugar_id = $1 AND r.fecha = $2
-      ORDER BY h.hora_inicio, u.nombre
+      WHERE COALESCE(h.lugar_id, e.lugar_id) = $1 AND r.fecha = $2
+      ORDER BY hora_inicio, u.nombre
     `, [lugar_id, fecha]);
     res.json(result.rows);
   } catch (err) {
@@ -86,8 +89,9 @@ router.post('/todos', async (req, res) => {
     const reservas = await pool.query(`
       SELECT r.id as reserva_id, r.usuario_id
       FROM reservas r
-      JOIN horarios_plantilla h ON r.horario_id = h.id
-      WHERE h.lugar_id = $1 AND r.fecha = $2
+      LEFT JOIN horarios_plantilla h ON r.horario_id = h.id
+      LEFT JOIN horarios_excepciones e ON r.excepcion_id = e.id
+      WHERE COALESCE(h.lugar_id, e.lugar_id) = $1 AND r.fecha = $2
     `, [lugar_id, fecha]);
 
     for (const r of reservas.rows) {
@@ -227,11 +231,11 @@ router.put('/saldos/:usuario_id/:lugar_id/pago', async (req, res) => {
   }
 });
 
-// OBTENER HORARIOS CON RESERVAS DE UN DIA
+// OBTENER HORARIOS CON RESERVAS DE UN DIA (incluye horarios especiales)
 router.get('/horarios-dia/:lugar_id/:fecha', async (req, res) => {
   try {
     const { lugar_id, fecha } = req.params;
-    const result = await pool.query(`
+    const normales = await pool.query(`
       SELECT h.id as horario_id, h.hora_inicio, h.hora_fin, h.cupos,
              COUNT(r.id) as reservados
       FROM horarios_plantilla h
@@ -240,13 +244,24 @@ router.get('/horarios-dia/:lugar_id/:fecha', async (req, res) => {
       GROUP BY h.id
       ORDER BY h.hora_inicio ASC
     `, [lugar_id, fecha]);
-    res.json(result.rows);
+
+    const especiales = await pool.query(`
+      SELECT e.id as horario_id, e.hora_inicio, e.hora_fin, e.cupos,
+             COUNT(r.id) as reservados
+      FROM horarios_excepciones e
+      INNER JOIN reservas r ON r.excepcion_id = e.id AND r.fecha = $2
+      WHERE e.lugar_id = $1 AND e.cerrado = false
+      GROUP BY e.id
+      ORDER BY e.hora_inicio ASC
+    `, [lugar_id, fecha]);
+
+    res.json([...normales.rows, ...especiales.rows]);
   } catch (err) {
     res.status(500).json({ error: 'Error al obtener horarios' });
   }
 });
 
-// OBTENER RESERVAS DE UN HORARIO ESPECIFICO
+// OBTENER RESERVAS DE UN HORARIO ESPECIFICO (normal o especial)
 router.get('/horario/:horario_id/:fecha', async (req, res) => {
   try {
     const { horario_id, fecha } = req.params;
@@ -257,7 +272,7 @@ router.get('/horario/:horario_id/:fecha', async (req, res) => {
       FROM reservas r
       JOIN usuarios u ON r.usuario_id = u.id
       LEFT JOIN asistencia a ON a.reserva_id = r.id
-      WHERE r.horario_id = $1 AND r.fecha = $2
+      WHERE (r.horario_id = $1 OR r.excepcion_id = $1) AND r.fecha = $2
       ORDER BY u.nombre
     `, [horario_id, fecha]);
     res.json(result.rows);
@@ -266,7 +281,7 @@ router.get('/horario/:horario_id/:fecha', async (req, res) => {
   }
 });
 
-// OBTENER PERSONAS RESERVADAS EN UN HORARIO (vista cliente)
+// OBTENER PERSONAS RESERVADAS EN UN HORARIO (vista cliente) - normal o especial
 router.get('/personas/:horario_id/:fecha', async (req, res) => {
   try {
     const { horario_id, fecha } = req.params;
@@ -274,7 +289,7 @@ router.get('/personas/:horario_id/:fecha', async (req, res) => {
       SELECT u.nombre, u.apellido
       FROM reservas r
       JOIN usuarios u ON r.usuario_id = u.id
-      WHERE r.horario_id = $1 AND r.fecha = $2
+      WHERE (r.horario_id = $1 OR r.excepcion_id = $1) AND r.fecha = $2
       ORDER BY u.nombre ASC
     `, [horario_id, fecha]);
     res.json(result.rows);

@@ -1,4 +1,4 @@
-\# 🏟️ Brospot
+\# 🏟️ Orbiport
 
 
 
@@ -6,7 +6,7 @@
 
 
 
-Aplicación web progresiva (PWA) desarrollada como proyecto de titulación de la Pontificia Universidad Católica del Ecuador (PUCE), Facultad de Ingeniería en Sistemas. Brospot permite a los estudiantes reservar horarios en espacios deportivos universitarios y a los administradores gestionar la asistencia, los cupos y los pagos por incumplimiento.
+Aplicación web progresiva (PWA) desarrollada como proyecto de titulación de la Pontificia Universidad Católica del Ecuador (PUCE), Facultad de Ingeniería en Sistemas. Orbiport permite a los estudiantes reservar horarios en espacios deportivos universitarios y a los administradores gestionar la asistencia, los cupos y los pagos por incumplimiento.
 
 
 
@@ -138,7 +138,7 @@ Aplicación web progresiva (PWA) desarrollada como proyecto de titulación de la
 
 
 
-Brospot está construido bajo una arquitectura cliente-servidor de tres capas:
+Orbiport está construido bajo una arquitectura cliente-servidor de tres capas:
 
 
 
@@ -178,9 +178,9 @@ Brospot está construido bajo una arquitectura cliente-servidor de tres capas:
 
 
 
-&#x20;      git clone https://github.com/israelrojas1012/brospot.git
+&#x20;      git clone https://github.com/israelrojas1012/Orbiport.git
 
-&#x20;      cd brospot
+&#x20;      cd Orbiport
 
 
 
@@ -210,7 +210,7 @@ Crear un archivo `.env` en la carpeta `backend` con las variables de entorno nec
 
 4\. Configurar la base de datos:
 
-&#x20;  - Crear una base de datos llamada `brospot` en PostgreSQL
+&#x20;  - Crear una base de datos llamada `Orbiport` en PostgreSQL
 
 &#x20;  - Ejecutar los scripts SQL de creación de tablas
 
@@ -266,7 +266,7 @@ Desde un dispositivo móvil o navegador compatible, acceda a la aplicación y se
 
 
 
-&#x20;   brospot/
+&#x20;   Orbiport/
 
 &#x20;   ├── backend/
 

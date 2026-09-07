@@ -90,6 +90,9 @@ export default function AdminPanel() {
   const [modalInscritos, setModalInscritos] = useState(null);
   const [personasInscritas, setPersonasInscritas] = useState([]);
   const [fechaInscritos, setFechaInscritos] = useState('');
+  // NUEVO: estados para editar horarios especiales individuales
+  const [horarioEspecialEditando, setHorarioEspecialEditando] = useState(null);
+  const [editFormEspecial, setEditFormEspecial] = useState({});
 
   useEffect(() => {
     if (usuario.acepto_terminos === false) {
@@ -232,6 +235,33 @@ export default function AdminPanel() {
       mostrarMensaje('Horario editado');
     } catch (err) {
       mostrarMensaje(err.response?.data?.error || 'Error al editar');
+    }
+  };
+
+  // NUEVO: guardar edición de un horario especial individual
+  const guardarEdicionEspecial = async () => {
+    if (editFormEspecial.hora_fin <= editFormEspecial.hora_inicio) {
+      mostrarMensaje('La hora de fin debe ser mayor que la hora de inicio');
+      return;
+    }
+    try {
+      await API.put(`/admin/excepcion/${horarioEspecialEditando.id}`, editFormEspecial);
+      cargarExcepciones(lugar.id);
+      setHorarioEspecialEditando(null);
+      mostrarMensaje('Horario especial actualizado');
+    } catch (err) {
+      mostrarMensaje(err.response?.data?.error || 'Error al actualizar');
+    }
+  };
+
+  // NUEVO: eliminar un horario especial individual (sin borrar los otros del mismo día)
+  const eliminarHorarioEspecialIndividual = async (id) => {
+    try {
+      await API.delete(`/admin/excepcion/${id}`);
+      cargarExcepciones(lugar.id);
+      mostrarMensaje('Horario especial eliminado');
+    } catch (err) {
+      mostrarMensaje(err.response?.data?.error || 'Error al eliminar horario especial');
     }
   };
 
@@ -873,20 +903,58 @@ export default function AdminPanel() {
                   }}>
                     <div style={styles.excepcionHeader}>
                       <p style={styles.excepcionFecha}>{formatFechaLarga(fecha)}</p>
-                      <button style={styles.btnEliminarHorario} onClick={() => eliminarExcepcion(fecha)}>Eliminar</button>
+                      <button style={styles.btnEliminarHorario} onClick={() => eliminarExcepcion(fecha)}>Eliminar día</button>
                     </div>
+                    {datos.motivo && <p style={styles.excepcionMotivo}>📌 {datos.motivo}</p>}
                     {datos.cerrado ? (
                       <p style={{ fontSize: 12, color: 'var(--color-error)', fontWeight: 700 }}>🔴 Cerrado</p>
                     ) : (
-                      <div style={styles.excepcionHorarios}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 4 }}>
                         {datos.horarios.map(h => (
-                          <span key={h.id} style={styles.horarioBadge}>
-                            {formatHora(h.hora_inicio)}-{formatHora(h.hora_fin)} ({h.cupos})
-                          </span>
+                          <div key={h.id}>
+                            {horarioEspecialEditando?.id === h.id ? (
+                              <div style={styles.editRow}>
+                                <input style={styles.inputSmall} type="time" value={editFormEspecial.hora_inicio} onChange={e => setEditFormEspecial({ ...editFormEspecial, hora_inicio: e.target.value })} />
+                                <input style={styles.inputSmall} type="time" value={editFormEspecial.hora_fin} onChange={e => setEditFormEspecial({ ...editFormEspecial, hora_fin: e.target.value })} />
+                                <input style={styles.inputSmall} type="number" inputMode="numeric" placeholder="Cupos" min="1"
+                                  value={editFormEspecial.cupos}
+                                  onChange={e => {
+                                    const val = parseInt(e.target.value);
+                                    if (!isNaN(val) && val >= 1) setEditFormEspecial({ ...editFormEspecial, cupos: val });
+                                    else if (e.target.value === '') setEditFormEspecial({ ...editFormEspecial, cupos: '' });
+                                  }}
+                                />
+                                <button style={styles.btnGuardarSmall} onClick={guardarEdicionEspecial}>OK</button>
+                                <button style={styles.btnCancelarSmall} onClick={() => setHorarioEspecialEditando(null)}>X</button>
+                              </div>
+                            ) : (
+                              <div style={styles.horarioRowConBoton}>
+                                <div style={{ ...styles.horarioRow, borderLeft: '3px solid var(--color-advertencia)' }}>
+                                  <span style={{ ...styles.horarioTexto, color: 'var(--color-advertencia)' }}>
+                                    {formatHora(h.hora_inicio)} - {formatHora(h.hora_fin)}
+                                  </span>
+                                  <span style={styles.cuposTexto}>👥 {h.cupos} cupos</span>
+                                  <button style={styles.btnEditarHorario} onClick={() => {
+                                    setHorarioEspecialEditando(h);
+                                    setEditFormEspecial({ hora_inicio: h.hora_inicio.slice(0, 5), hora_fin: h.hora_fin.slice(0, 5), cupos: h.cupos });
+                                  }}>Editar</button>
+                                  <button style={styles.btnEliminarHorario} onClick={() => eliminarHorarioEspecialIndividual(h.id)}>Eliminar</button>
+                                </div>
+                                <button
+                                  style={{ ...styles.btnVerInscritos, borderColor: 'rgba(245,158,11,0.4)', color: 'var(--color-advertencia)', background: 'rgba(245,158,11,0.08)' }}
+                                  onClick={() => {
+                                    setFechaInscritos(fecha.slice(0, 10));
+                                    verInscritosAdmin(h, fecha.slice(0, 10));
+                                  }}
+                                >
+                                  👥 Ver inscritos
+                                </button>
+                              </div>
+                            )}
+                          </div>
                         ))}
                       </div>
                     )}
-                    {datos.motivo && <p style={styles.excepcionMotivo}>{datos.motivo}</p>}
                   </div>
                 ))}
               </div>
@@ -1001,6 +1069,7 @@ export default function AdminPanel() {
                           {tieneExcepcion.cerrado ? '🔒 Cerrado este día (excepción)' : '⚡ Este día tiene horarios especiales que reemplazan los normales'}
                         </div>
                       )}
+
                       {horariosPorDia(dia).map(h => (
                         <div key={h.id}>
                           {horarioEditando?.id === h.id ? (

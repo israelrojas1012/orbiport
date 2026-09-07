@@ -27,8 +27,8 @@ export default defineConfig({
       includeAssets: ['icon-192.png', 'icon-512.png', 'screenshot_mobile.png', 'screenshot_desktop.png'],
       manifest: {
         id: '/',
-        name: 'Brospot - Reservas Deportivas',
-        short_name: 'Brospot',
+        name: 'Orbiport - Reservas Deportivas',
+        short_name: 'Orbiport',
         description: 'Reserva tus espacios deportivos favoritos',
         theme_color: '#4f46e5',
         background_color: '#0a0a0f',
@@ -58,14 +58,14 @@ export default defineConfig({
             sizes: '336x749',
             type: 'image/png',
             form_factor: 'narrow',
-            label: 'Pantalla principal de Brospot en móvil'
+            label: 'Pantalla principal de Orbiport en móvil'
           },
           {
             src: '/screenshot_desktop.png',
             sizes: '957x947',
             type: 'image/png',
             form_factor: 'wide',
-            label: 'Pantalla principal de Brospot en escritorio'
+            label: 'Pantalla principal de Orbiport en escritorio'
           }
         ]
       },

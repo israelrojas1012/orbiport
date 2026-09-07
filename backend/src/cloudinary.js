@@ -11,7 +11,7 @@ cloudinary.config({
 const storage = new CloudinaryStorage({
   cloudinary: cloudinary,
   params: {
-    folder: 'brospot',
+    folder: 'Orbiport',
     allowed_formats: ['jpg', 'jpeg', 'png', 'webp'],
     transformation: [{ width: 1600, height: 1600, crop: 'limit', quality: 'auto:best', fetch_format: 'auto' }],
   },

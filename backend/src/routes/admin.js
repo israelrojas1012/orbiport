@@ -215,6 +215,16 @@ router.delete('/horarios/:id', async (req, res) => {
         error: `No puedes eliminar este horario porque tiene ${reservas.rows[0].count} reserva(s) activa(s). Debes esperar a que pasen para poder eliminarlo.`
       });
     }
+    // Borrar en cadena: penalizaciones → asistencia → reservas → horario
+    await pool.query(`
+      DELETE FROM penalizaciones WHERE asistencia_id IN (
+        SELECT a.id FROM asistencia a
+        JOIN reservas r ON a.reserva_id = r.id
+        WHERE r.horario_id = $1
+      )
+    `, [id]);
+    await pool.query('DELETE FROM asistencia WHERE reserva_id IN (SELECT id FROM reservas WHERE horario_id = $1)', [id]);
+    await pool.query('DELETE FROM reservas WHERE horario_id = $1', [id]);
     await pool.query('DELETE FROM horarios_plantilla WHERE id = $1', [id]);
     res.json({ mensaje: 'Horario eliminado' });
   } catch (err) {
@@ -263,7 +273,9 @@ router.post('/horarios/copiar', async (req, res) => {
 router.post('/excepciones', async (req, res) => {
   try {
     const { lugar_id, fecha, horarios, cerrado, motivo } = req.body;
+
     await pool.query('DELETE FROM horarios_excepciones WHERE lugar_id=$1 AND fecha=$2', [lugar_id, fecha]);
+
     if (cerrado) {
       await pool.query(
         'INSERT INTO horarios_excepciones (lugar_id, fecha, cerrado, motivo) VALUES ($1, $2, true, $3)',
@@ -287,7 +299,43 @@ router.post('/excepciones', async (req, res) => {
     } else {
       return res.status(400).json({ error: 'Debes elegir cerrado o agregar al menos un horario' });
     }
-    res.status(201).json({ mensaje: 'Dia especial guardado correctamente' });
+
+    const reservasAfectadas = await pool.query(
+      `SELECT r.id, r.usuario_id, h.hora_inicio, l.nombre AS lugar_nombre
+       FROM reservas r
+       JOIN horarios_plantilla h ON r.horario_id = h.id
+       JOIN lugares l ON h.lugar_id = l.id
+       WHERE h.lugar_id = $1 AND r.fecha::date = $2::date`,
+      [lugar_id, fecha]
+    );
+
+    if (reservasAfectadas.rows.length > 0) {
+      const fechaTexto = new Date(fecha + 'T00:00:00').toLocaleDateString('es-EC');
+      const razon = motivo ? ` (${motivo})` : '';
+
+      for (const r of reservasAfectadas.rows) {
+        const mensaje = cerrado
+          ? `Tu reserva del ${fechaTexto} en "${r.lugar_nombre}" fue cancelada porque el lugar permanecerá cerrado ese día${razon}.`
+          : `El horario del ${fechaTexto} en "${r.lugar_nombre}" cambió${razon}. Tu reserva fue cancelada, por favor revisa los nuevos horarios y vuelve a reservar.`;
+
+        await pool.query(
+          'INSERT INTO notificaciones (usuario_id, mensaje) VALUES ($1, $2)',
+          [r.usuario_id, mensaje]
+        );
+      }
+
+      await pool.query(
+        `DELETE FROM reservas
+         WHERE fecha::date = $1::date
+         AND horario_id IN (SELECT id FROM horarios_plantilla WHERE lugar_id = $2)`,
+        [fecha, lugar_id]
+      );
+    }
+
+    res.status(201).json({
+      mensaje: 'Dia especial guardado correctamente',
+      reservas_canceladas: reservasAfectadas.rows.length
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Error al guardar dia especial' });
@@ -310,10 +358,102 @@ router.get('/excepciones/:lugar_id', async (req, res) => {
 router.delete('/excepciones/:lugar_id/:fecha', async (req, res) => {
   try {
     const { lugar_id, fecha } = req.params;
+
+    const fechaExcepcion = new Date(fecha + 'T00:00:00');
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+    const yaPaso = fechaExcepcion <= hoy;
+
+    if (yaPaso) {
+      await pool.query(
+        `DELETE FROM reservas WHERE excepcion_id IN (
+          SELECT id FROM horarios_excepciones WHERE lugar_id=$1 AND fecha::date=$2::date
+        )`,
+        [lugar_id, fecha]
+      );
+      await pool.query('DELETE FROM horarios_excepciones WHERE lugar_id=$1 AND fecha=$2', [lugar_id, fecha]);
+      return res.json({ mensaje: 'Dia especial eliminado' });
+    }
+
+    const reservas = await pool.query(
+      `SELECT COUNT(*) FROM reservas r
+       JOIN horarios_excepciones e ON r.excepcion_id = e.id
+       WHERE e.lugar_id = $1 AND e.fecha::date = $2::date`,
+      [lugar_id, fecha]
+    );
+    if (parseInt(reservas.rows[0].count) > 0) {
+      return res.status(400).json({
+        error: `No puedes eliminar este día especial porque tiene ${reservas.rows[0].count} reserva(s) activa(s). Cancela primero las reservas desde la sección de inscritos.`
+      });
+    }
+
     await pool.query('DELETE FROM horarios_excepciones WHERE lugar_id=$1 AND fecha=$2', [lugar_id, fecha]);
     res.json({ mensaje: 'Dia especial eliminado' });
   } catch (err) {
     res.status(500).json({ error: 'Error al eliminar' });
+  }
+});
+
+// EDITAR UN HORARIO ESPECIAL INDIVIDUAL
+router.put('/excepcion/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { hora_inicio, hora_fin, cupos } = req.body;
+    if (hora_fin <= hora_inicio) {
+      return res.status(400).json({ error: 'La hora de fin debe ser mayor que la hora de inicio' });
+    }
+    if (!cupos || cupos < 1) {
+      return res.status(400).json({ error: 'Los cupos deben ser al menos 1' });
+    }
+    await pool.query(
+      'UPDATE horarios_excepciones SET hora_inicio=$1, hora_fin=$2, cupos=$3 WHERE id=$4',
+      [hora_inicio, hora_fin, cupos, id]
+    );
+    res.json({ mensaje: 'Horario especial actualizado' });
+  } catch (err) {
+    res.status(500).json({ error: 'Error al actualizar horario especial' });
+  }
+});
+
+// ELIMINAR UN HORARIO ESPECIAL INDIVIDUAL (sin borrar los otros del mismo dia)
+router.delete('/excepcion/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const excepcion = await pool.query(
+      'SELECT fecha FROM horarios_excepciones WHERE id = $1',
+      [id]
+    );
+    if (excepcion.rows.length === 0) {
+      return res.status(404).json({ error: 'Horario especial no encontrado' });
+    }
+
+    const fechaExcepcion = new Date(excepcion.rows[0].fecha);
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+    // <= hoy para que el día de hoy también se pueda eliminar libremente
+    const yaPaso = fechaExcepcion <= hoy;
+
+    if (yaPaso) {
+      await pool.query('DELETE FROM reservas WHERE excepcion_id = $1', [id]);
+      await pool.query('DELETE FROM horarios_excepciones WHERE id = $1', [id]);
+      return res.json({ mensaje: 'Horario especial eliminado' });
+    }
+
+    const reservas = await pool.query(
+      'SELECT COUNT(*) FROM reservas WHERE excepcion_id = $1',
+      [id]
+    );
+    if (parseInt(reservas.rows[0].count) > 0) {
+      return res.status(400).json({
+        error: `No puedes eliminar este horario especial porque tiene ${reservas.rows[0].count} reserva(s) activa(s). Cancela primero las reservas desde la sección de inscritos.`
+      });
+    }
+
+    await pool.query('DELETE FROM horarios_excepciones WHERE id = $1', [id]);
+    res.json({ mensaje: 'Horario especial eliminado' });
+  } catch (err) {
+    res.status(500).json({ error: 'Error al eliminar horario especial' });
   }
 });
 

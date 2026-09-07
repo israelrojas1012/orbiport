@@ -81,6 +81,9 @@ export default function DetalleLugar() {
 
   const getReserva = (horario, fecha) => {
     const fechaStr = formatearFechaLocal(fecha);
+    if (horario.esExcepcion) {
+      return reservasHechas.find(r => String(r.excepcion_id) === String(horario.id) && r.fecha?.slice(0,10) === fechaStr);
+    }
     return reservasHechas.find(r => String(r.horario_id) === String(horario.id) && r.fecha?.slice(0,10) === fechaStr);
   };
 
@@ -107,13 +110,21 @@ export default function DetalleLugar() {
         mostrarToast('Solo puedes reservar con al menos 2 horas de anticipación', 'error');
         return;
       }
-      const res = await API.post('/reservas', {
-        usuario_id: usuario.id,
-        horario_id: horario.id,
-        fecha: fechaStr,
-      });
+      const payload = horario.esExcepcion
+        ? { usuario_id: usuario.id, excepcion_id: horario.id, fecha: fechaStr }
+        : { usuario_id: usuario.id, horario_id: horario.id, fecha: fechaStr };
+      const res = await API.post('/reservas', payload);
       setHorarios(prev => prev.map(h2 => h2.id === horario.id ? { ...h2, reservados: (h2.reservados || 0) + 1 } : h2));
-      setReservasHechas(prev => [...prev, { ...res.data, horario_id: horario.id, fecha: fechaStr, hora_inicio: horario.hora_inicio, hora_fin: horario.hora_fin, dia: horario.dia }]);
+      setExcepciones(prev => prev.map(e => e.id === horario.id ? { ...e, reservados: (e.reservados || 0) + 1 } : e));
+      setReservasHechas(prev => [...prev, {
+        ...res.data,
+        horario_id: horario.esExcepcion ? null : horario.id,
+        excepcion_id: horario.esExcepcion ? horario.id : null,
+        fecha: fechaStr,
+        hora_inicio: horario.hora_inicio,
+        hora_fin: horario.hora_fin,
+        dia: horario.dia
+      }]);
       mostrarToast(`¡Reserva confirmada! ${formatearFecha(fecha)} ${formatHora(horario.hora_inicio)}`, 'exito');
     } catch (err) {
       mostrarToast(err.response?.data?.error || 'Error al reservar', 'error');
@@ -124,7 +135,11 @@ export default function DetalleLugar() {
     try {
       await API.delete(`/reservas/${reserva.id}`);
       setReservasHechas(prev => prev.filter(r => r.id !== reserva.id));
-      setHorarios(prev => prev.map(h => h.id === reserva.horario_id ? { ...h, reservados: Math.max(0, (h.reservados || 0) - 1) } : h));
+      if (reserva.excepcion_id) {
+        setExcepciones(prev => prev.map(e => e.id === reserva.excepcion_id ? { ...e, reservados: Math.max(0, (e.reservados || 0) - 1) } : e));
+      } else {
+        setHorarios(prev => prev.map(h => h.id === reserva.horario_id ? { ...h, reservados: Math.max(0, (h.reservados || 0) - 1) } : h));
+      }
       mostrarToast('Reserva cancelada correctamente', 'exito');
     } catch (err) {
       mostrarToast(err.response?.data?.error || 'Error al cancelar', 'error');
@@ -208,7 +223,7 @@ export default function DetalleLugar() {
     return url.replace('/upload/', '/upload/w_1600,q_auto:best,f_auto/');
   };
 
-  const fotosCarrusel = fotos.length > 0 ? fotos.map(f => optimizarFoto(f.url)) : [optimizarFoto(lugar?.foto_url) || 'https://via.placeholder.com/600x400/4f46e5/ffffff?text=Brospot'];
+  const fotosCarrusel = fotos.length > 0 ? fotos.map(f => optimizarFoto(f.url)) : [optimizarFoto(lugar?.foto_url) || 'https://via.placeholder.com/600x400/4f46e5/ffffff?text=Orbiport'];
 
   if (!lugar) return (
     <div style={styles.loading}>
@@ -420,10 +435,11 @@ export default function DetalleLugar() {
             const horariosNormales = horariosPorDia(dia);
             const horariosAUsar = tieneHorariosEspeciales.length > 0
               ? tieneHorariosEspeciales.map(e => ({
-                  id: `exc-${e.id}`,
+                  id: e.id,
                   hora_inicio: e.hora_inicio,
                   hora_fin: e.hora_fin,
                   cupos: e.cupos,
+                  reservados: e.reservados || 0,
                   dia,
                   esExcepcion: true,
                   excepcion_id: e.id,
@@ -467,7 +483,7 @@ export default function DetalleLugar() {
                       horariosAUsar.map(h => {
                         const paso = horarioYaPaso(h, fecha);
                         const reserva = getReserva(h, fecha);
-                        const puedeReservar = estadoInscripcion === 'aprobada' && !paso && !reserva && !h.esExcepcion;
+                        const puedeReservar = estadoInscripcion === 'aprobada' && !paso && !reserva;
                         const disponibles = h.cupos - (h.reservados || 0);
                         return (
                           <div
@@ -489,7 +505,7 @@ export default function DetalleLugar() {
                                 </span>
                                 {paso && <span style={styles.horarioEstado}>No disponible</span>}
                                 {reserva && <span style={{ ...styles.horarioEstado, color: 'var(--color-exito)' }}>✓ Ya reservado</span>}
-                                {h.esExcepcion && !paso && <span style={{ ...styles.horarioEstado, color: 'var(--color-advertencia)' }}>Especial</span>}
+                                {h.esExcepcion && !paso && !reserva && <span style={{ ...styles.horarioEstado, color: 'var(--color-advertencia)' }}>Especial</span>}
                               </div>
 
                               <div style={styles.cuposRow}>
@@ -503,7 +519,7 @@ export default function DetalleLugar() {
                             </div>
 
                             <div style={styles.horarioBotones}>
-                              {estadoInscripcion === 'aprobada' && !paso && !h.esExcepcion && (
+                              {estadoInscripcion === 'aprobada' && !paso && (
                                 <button style={styles.btnVerPersonas} onClick={() => verPersonas(h, fecha)}>
                                   👥 Ver
                                 </button>

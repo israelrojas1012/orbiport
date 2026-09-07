@@ -21,7 +21,7 @@ export default function TerminosModal({ abierto, onCerrar, onAceptar, esAdmin = 
           <div style={{ flex: 1 }}>
             <h2 style={styles.titulo}>Términos y Condiciones</h2>
             <p style={styles.subtitulo}>
-              {esAdmin ? 'Acuerdo para administradores' : 'Acuerdo de uso de Brospot'}
+              {esAdmin ? 'Acuerdo para administradores' : 'Acuerdo de uso de Orbiport'}
             </p>
           </div>
           {modoSoloLectura && (
@@ -82,12 +82,12 @@ function TerminosCliente() {
 
       <h3 style={styles.h3}>1. Aceptación del acuerdo</h3>
       <p style={styles.parrafo}>
-        Al registrarte y usar Brospot, aceptas los presentes términos y condiciones. Si no estás de acuerdo con alguno de ellos, no debes utilizar la aplicación.
+        Al registrarte y usar Orbiport, aceptas los presentes términos y condiciones. Si no estás de acuerdo con alguno de ellos, no debes utilizar la aplicación.
       </p>
 
       <h3 style={styles.h3}>2. Descripción del servicio</h3>
       <p style={styles.parrafo}>
-        Brospot es una plataforma digital que conecta a usuarios con centros deportivos (gimnasios, canchas, centros de crossfit, etc.) para realizar reservas de horarios disponibles. Brospot no es propietaria de los centros listados y actúa únicamente como intermediario tecnológico.
+        Orbiport es una plataforma digital que conecta a usuarios con centros deportivos (gimnasios, canchas, centros de crossfit, etc.) para realizar reservas de horarios disponibles. Orbiport no es propietaria de los centros listados y actúa únicamente como intermediario tecnológico.
       </p>
 
       <h3 style={styles.h3}>3. Registro y cuenta</h3>
@@ -97,7 +97,7 @@ function TerminosCliente() {
 
       <h3 style={styles.h3}>4. Inscripción a centros</h3>
       <p style={styles.parrafo}>
-        Para reservar horarios en un centro, debes solicitar inscripción. Cada centro decide si aprueba o rechaza tu solicitud. Brospot no garantiza la aceptación de ninguna inscripción.
+        Para reservar horarios en un centro, debes solicitar inscripción. Cada centro decide si aprueba o rechaza tu solicitud. Orbiport no garantiza la aceptación de ninguna inscripción.
       </p>
 
       <h3 style={styles.h3}>5. Reservas y cancelaciones</h3>
@@ -113,17 +113,17 @@ function TerminosCliente() {
 
       <h3 style={styles.h3}>6. Penalizaciones por inasistencia</h3>
       <p style={styles.parrafo}>
-        Si reservas un horario y no asistes sin cancelar con anticipación, se te aplicará una penalización de <strong>$0.25 USD por cada falta</strong>. Estas penalizaciones se acumulan en tu cuenta y deben ser pagadas directamente al administrador del centro correspondiente. Brospot no procesa pagos.
+        Si reservas un horario y no asistes sin cancelar con anticipación, se te aplicará una penalización de <strong>$0.25 USD por cada falta</strong>. Estas penalizaciones se acumulan en tu cuenta y deben ser pagadas directamente al administrador del centro correspondiente. Orbiport no procesa pagos.
       </p>
 
       <h3 style={styles.h3}>7. Responsabilidad del usuario</h3>
       <p style={styles.parrafo}>
-        Eres responsable de tu propia salud física y de las condiciones para realizar actividad deportiva. Brospot y los centros no se hacen responsables por lesiones u otros daños sufridos durante la práctica deportiva.
+        Eres responsable de tu propia salud física y de las condiciones para realizar actividad deportiva. Orbiport y los centros no se hacen responsables por lesiones u otros daños sufridos durante la práctica deportiva.
       </p>
 
       <h3 style={styles.h3}>8. Protección de datos personales</h3>
       <p style={styles.parrafo}>
-        Brospot recopila únicamente los datos necesarios para el funcionamiento del servicio: nombre, apellido y correo electrónico. Estos datos son compartidos solamente con los administradores de los centros a los que te inscribes, para que puedan gestionar las reservas.
+        Orbiport recopila únicamente los datos necesarios para el funcionamiento del servicio: nombre, apellido y correo electrónico. Estos datos son compartidos solamente con los administradores de los centros a los que te inscribes, para que puedan gestionar las reservas.
       </p>
       <p style={styles.parrafo}>
         Tus datos no se venden ni comparten con terceros con fines comerciales. Las contraseñas se almacenan cifradas. Tienes derecho a solicitar la eliminación de tu cuenta en cualquier momento.
@@ -131,17 +131,17 @@ function TerminosCliente() {
 
       <h3 style={styles.h3}>9. Notificaciones</h3>
       <p style={styles.parrafo}>
-        Al registrarte, autorizas a Brospot a enviarte correos electrónicos relacionados con tu cuenta: verificación, recuperación de contraseña, confirmaciones de reservas, avisos de faltas y notificaciones del administrador del centro.
+        Al registrarte, autorizas a Orbiport a enviarte correos electrónicos relacionados con tu cuenta: verificación, recuperación de contraseña, confirmaciones de reservas, avisos de faltas y notificaciones del administrador del centro.
       </p>
 
       <h3 style={styles.h3}>10. Uso adecuado</h3>
       <p style={styles.parrafo}>
-        Está prohibido utilizar Brospot para fines ilegales, suplantar la identidad de otros usuarios, intentar vulnerar la seguridad de la plataforma o causar perjuicio a otros usuarios o centros. El incumplimiento puede resultar en la suspensión de tu cuenta.
+        Está prohibido utilizar Orbiport para fines ilegales, suplantar la identidad de otros usuarios, intentar vulnerar la seguridad de la plataforma o causar perjuicio a otros usuarios o centros. El incumplimiento puede resultar en la suspensión de tu cuenta.
       </p>
 
       <h3 style={styles.h3}>11. Modificaciones</h3>
       <p style={styles.parrafo}>
-        Brospot se reserva el derecho de modificar estos términos en cualquier momento. Los cambios entrarán en vigor desde su publicación. El uso continuado del servicio implica la aceptación de los términos actualizados.
+        Orbiport se reserva el derecho de modificar estos términos en cualquier momento. Los cambios entrarán en vigor desde su publicación. El uso continuado del servicio implica la aceptación de los términos actualizados.
       </p>
 
       <h3 style={styles.h3}>12. Contacto</h3>
@@ -166,13 +166,13 @@ function TerminosAdmin() {
 
       <div style={styles.cajaImportante}>
         <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-primario)' }}>
-          ⚠️ Como administrador de un centro deportivo en Brospot, tienes responsabilidades adicionales. Léelas con atención.
+          ⚠️ Como administrador de un centro deportivo en Orbiport, tienes responsabilidades adicionales. Léelas con atención.
         </p>
       </div>
 
       <h3 style={styles.h3}>1. Rol del administrador</h3>
       <p style={styles.parrafo}>
-        Como administrador, eres responsable de gestionar la información, horarios, inscripciones y asistencia del centro deportivo que representas en Brospot. Tu cuenta es personal e intransferible.
+        Como administrador, eres responsable de gestionar la información, horarios, inscripciones y asistencia del centro deportivo que representas en Orbiport. Tu cuenta es personal e intransferible.
       </p>
 
       <h3 style={styles.h3}>2. Veracidad de la información</h3>
@@ -187,12 +187,12 @@ function TerminosAdmin() {
 
       <h3 style={styles.h3}>4. Asistencia y penalizaciones</h3>
       <p style={styles.parrafo}>
-        Eres responsable de marcar la asistencia o falta de los usuarios reservados, de forma honesta y oportuna. Las penalizaciones por inasistencia ($0.25 USD por falta) se cobran directamente entre el centro y el usuario; Brospot no participa en la transacción económica.
+        Eres responsable de marcar la asistencia o falta de los usuarios reservados, de forma honesta y oportuna. Las penalizaciones por inasistencia ($0.25 USD por falta) se cobran directamente entre el centro y el usuario; Orbiport no participa en la transacción económica.
       </p>
 
       <h3 style={styles.h3}>5. Cobro de penalizaciones</h3>
       <p style={styles.parrafo}>
-        Tienes la responsabilidad de cobrar las penalizaciones acumuladas a tus usuarios. Una vez recibido el pago, debes registrarlo correctamente en el panel de Brospot para mantener actualizados los saldos.
+        Tienes la responsabilidad de cobrar las penalizaciones acumuladas a tus usuarios. Una vez recibido el pago, debes registrarlo correctamente en el panel de Orbiport para mantener actualizados los saldos.
       </p>
 
       <h3 style={styles.h3}>6. Datos de los usuarios</h3>
@@ -202,17 +202,17 @@ function TerminosAdmin() {
 
       <h3 style={styles.h3}>7. Comunicación con usuarios</h3>
       <p style={styles.parrafo}>
-        Las notificaciones automáticas (faltas, aprobaciones, rechazos) se envían a través de Brospot. Para comunicaciones adicionales, debes usar canales fuera de la plataforma con consentimiento del usuario.
+        Las notificaciones automáticas (faltas, aprobaciones, rechazos) se envían a través de Orbiport. Para comunicaciones adicionales, debes usar canales fuera de la plataforma con consentimiento del usuario.
       </p>
 
       <h3 style={styles.h3}>8. Operación del centro</h3>
       <p style={styles.parrafo}>
-        Brospot es solo una herramienta de gestión de reservas. El funcionamiento, la calidad del servicio, las instalaciones, el equipamiento, los instructores y la seguridad del centro deportivo son responsabilidad exclusiva del centro, no de Brospot.
+        Orbiport es solo una herramienta de gestión de reservas. El funcionamiento, la calidad del servicio, las instalaciones, el equipamiento, los instructores y la seguridad del centro deportivo son responsabilidad exclusiva del centro, no de Orbiport.
       </p>
 
       <h3 style={styles.h3}>9. Responsabilidad legal</h3>
       <p style={styles.parrafo}>
-        Cualquier disputa legal, reclamo o litigio originado entre el centro y los usuarios inscritos es responsabilidad del centro. Brospot no se involucra en disputas, salvo para colaborar como intermediario tecnológico cuando sea solicitado.
+        Cualquier disputa legal, reclamo o litigio originado entre el centro y los usuarios inscritos es responsabilidad del centro. Orbiport no se involucra en disputas, salvo para colaborar como intermediario tecnológico cuando sea solicitado.
       </p>
 
       <h3 style={styles.h3}>10. Confidencialidad</h3>
@@ -222,12 +222,12 @@ function TerminosAdmin() {
 
       <h3 style={styles.h3}>11. Suspensión de cuenta</h3>
       <p style={styles.parrafo}>
-        Brospot puede suspender la cuenta de un administrador en caso de incumplimiento de estos términos, mal uso de la plataforma, denuncias verificadas de usuarios o cualquier conducta que perjudique a otros usuarios o a la comunidad de Brospot.
+        Orbiport puede suspender la cuenta de un administrador en caso de incumplimiento de estos términos, mal uso de la plataforma, denuncias verificadas de usuarios o cualquier conducta que perjudique a otros usuarios o a la comunidad de Orbiport.
       </p>
 
       <h3 style={styles.h3}>12. Comisiones y modelo de negocio</h3>
       <p style={styles.parrafo}>
-        Actualmente, el uso de Brospot como administrador es gratuito. En el futuro podrían aplicarse comisiones o planes de pago, los cuales serán comunicados con anticipación a los administradores activos.
+        Actualmente, el uso de Orbiport como administrador es gratuito. En el futuro podrían aplicarse comisiones o planes de pago, los cuales serán comunicados con anticipación a los administradores activos.
       </p>
 
       <h3 style={styles.h3}>13. Contacto</h3>
@@ -237,7 +237,7 @@ function TerminosAdmin() {
 
       <div style={styles.notaFinal}>
         <p style={{ fontSize: 12, color: 'var(--text-suave)', fontStyle: 'italic', textAlign: 'center' }}>
-          Al aceptar estos términos, te comprometes formalmente a cumplir con las responsabilidades de administrador en Brospot.
+          Al aceptar estos términos, te comprometes formalmente a cumplir con las responsabilidades de administrador en Orbiport.
         </p>
       </div>
     </div>

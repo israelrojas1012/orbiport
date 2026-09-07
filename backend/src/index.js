@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
+console.log('DB:', process.env.DB_HOST, process.env.DB_NAME);
 
 const app = express();
 app.use(cors());
@@ -9,10 +10,13 @@ app.use(express.json());
 const { Pool } = require('pg');
 const pool = new Pool({
   host: process.env.DB_HOST,
-  port: process.env.DB_PORT,
+  port: Number(process.env.DB_PORT),
   database: process.env.DB_NAME,
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
+  ssl: {
+    rejectUnauthorized: false
+  }
 });
 
 pool.connect()
@@ -53,7 +57,7 @@ const fotosRoutes = require('./routes/fotos');
 app.use('/api/fotos', fotosRoutes);
 
 app.get('/', (req, res) => {
-  res.json({ mensaje: '🟢 Brospot API funcionando' });
+  res.json({ mensaje: '🟢 Orbiport API funcionando' });
 });
 
 app.listen(process.env.PORT, '0.0.0.0', () => {

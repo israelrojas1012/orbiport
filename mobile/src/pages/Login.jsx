@@ -53,7 +53,7 @@ export default function Login() {
         {/* Logo y bienvenida */}
         <div style={styles.logoWrap}>
           <div style={styles.logoIcon}>B</div>
-          <h1 style={styles.titulo}>Brospot</h1>
+          <h1 style={styles.titulo}>Orbiport</h1>
           <p style={styles.subtitulo}>Bienvenido de vuelta</p>
         </div>
 

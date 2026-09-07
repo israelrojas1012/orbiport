@@ -14,12 +14,15 @@ router.get('/usuario/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const result = await pool.query(`
-      SELECT r.id, r.fecha, r.estado, r.horario_id,
+      SELECT r.id, r.fecha, r.estado, r.horario_id, r.excepcion_id,
              l.nombre as lugar_nombre,
-             h.dia, h.hora_inicio, h.hora_fin
+             COALESCE(h.dia, 'Especial') as dia,
+             COALESCE(h.hora_inicio, e.hora_inicio) as hora_inicio,
+             COALESCE(h.hora_fin, e.hora_fin) as hora_fin
       FROM reservas r
-      JOIN horarios_plantilla h ON r.horario_id = h.id
-      JOIN lugares l ON h.lugar_id = l.id
+      LEFT JOIN horarios_plantilla h ON r.horario_id = h.id
+      LEFT JOIN horarios_excepciones e ON r.excepcion_id = e.id
+      LEFT JOIN lugares l ON l.id = COALESCE(h.lugar_id, e.lugar_id)
       WHERE r.usuario_id = $1
       ORDER BY r.creado_en DESC
     `, [id]);
@@ -30,8 +33,40 @@ router.get('/usuario/:id', async (req, res) => {
 });
 
 router.post('/', async (req, res) => {
-  const { usuario_id, horario_id, fecha } = req.body;
+  const { usuario_id, horario_id, excepcion_id, fecha } = req.body;
   try {
+    // Reserva sobre un horario especial (excepción)
+    if (excepcion_id) {
+      const existeExc = await pool.query(
+        'SELECT id FROM reservas WHERE usuario_id = $1 AND excepcion_id = $2 AND fecha = $3',
+        [usuario_id, excepcion_id, fecha]
+      );
+      if (existeExc.rows.length > 0) {
+        return res.status(400).json({ error: '⚠️ Ya tienes una reserva para este horario' });
+      }
+
+      const excepcion = await pool.query('SELECT cupos FROM horarios_excepciones WHERE id = $1', [excepcion_id]);
+      if (excepcion.rows.length === 0) {
+        return res.status(404).json({ error: 'Horario especial no encontrado' });
+      }
+      const reservadosExc = await pool.query(
+        'SELECT COUNT(*) FROM reservas WHERE excepcion_id = $1 AND fecha = $2',
+        [excepcion_id, fecha]
+      );
+      const cuposTotalExc = parseInt(excepcion.rows[0].cupos);
+      const cuposReservadosExc = parseInt(reservadosExc.rows[0].count);
+      if (cuposReservadosExc >= cuposTotalExc) {
+        return res.status(400).json({ error: '⚠️ No hay cupos disponibles' });
+      }
+
+      const resultExc = await pool.query(
+        'INSERT INTO reservas (usuario_id, excepcion_id, fecha) VALUES ($1, $2, $3) RETURNING *',
+        [usuario_id, excepcion_id, fecha]
+      );
+      return res.status(201).json(resultExc.rows[0]);
+    }
+
+    // Reserva normal sobre un horario regular
     const existe = await pool.query(
       'SELECT id FROM reservas WHERE usuario_id = $1 AND horario_id = $2 AND fecha = $3',
       [usuario_id, horario_id, fecha]
@@ -64,9 +99,12 @@ router.delete('/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const reserva = await pool.query(`
-      SELECT r.*, h.hora_inicio, h.dia
+      SELECT r.*,
+             COALESCE(h.hora_inicio, e.hora_inicio) as hora_inicio,
+             COALESCE(h.dia, 'Especial') as dia
       FROM reservas r
-      JOIN horarios_plantilla h ON r.horario_id = h.id
+      LEFT JOIN horarios_plantilla h ON r.horario_id = h.id
+      LEFT JOIN horarios_excepciones e ON r.excepcion_id = e.id
       WHERE r.id = $1
     `, [id]);
 

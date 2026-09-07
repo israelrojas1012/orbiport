@@ -52,10 +52,10 @@ router.post('/registro', async (req, res) => {
 
     await enviarEmail(
       correo,
-      'Verifica tu cuenta - Brospot',
+      'Verifica tu cuenta - Orbiport',
       `
         <div style="font-family: sans-serif; max-width: 400px; margin: 0 auto; padding: 20px;">
-          <h2 style="color: #4f46e5;">Bienvenido a Brospot, ${nombre}!</h2>
+          <h2 style="color: #4f46e5;">Bienvenido a Orbiport, ${nombre}!</h2>
           <p>Gracias por registrarte. Tu codigo de verificacion es:</p>
           <div style="background: #f0f0ff; border-radius: 10px; padding: 20px; text-align: center; margin: 20px 0;">
             <h1 style="color: #4f46e5; letter-spacing: 8px; font-size: 36px;">${token}</h1>

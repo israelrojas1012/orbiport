@@ -70,7 +70,7 @@ export default function Registro() {
         {/* Logo y bienvenida */}
         <div style={styles.logoWrap}>
           <div style={styles.logoIcon}>B</div>
-          <h1 style={styles.titulo}>Brospot</h1>
+          <h1 style={styles.titulo}>Orbiport</h1>
           <p style={styles.subtitulo}>
             {paso === 1 ? 'Crea tu cuenta' : 'Verifica tu correo'}
           </p>
@@ -173,7 +173,7 @@ export default function Registro() {
                 >
                   términos y condiciones
                 </span>
-                {' '}de Brospot
+                {' '}de Orbiport
               </p>
             </div>
 

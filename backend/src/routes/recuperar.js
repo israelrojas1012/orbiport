@@ -27,10 +27,10 @@ router.post('/solicitar', async (req, res) => {
     tokens[correo] = { token, expira: Date.now() + 15 * 60 * 1000 };
     await enviarEmail(
       correo,
-      'Recuperacion de contrasena - Brospot',
+      'Recuperacion de contrasena - Orbiport',
       `
         <div style="font-family: sans-serif; max-width: 400px; margin: 0 auto; padding: 20px;">
-          <h2 style="color: #4f46e5;">Brospot</h2>
+          <h2 style="color: #4f46e5;">Orbiport</h2>
           <p>Recibimos una solicitud para restablecer tu contrasena.</p>
           <p>Tu codigo de verificacion es:</p>
           <div style="background: #f0f0ff; border-radius: 10px; padding: 20px; text-align: center; margin: 20px 0;">

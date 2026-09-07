@@ -11,7 +11,7 @@ const transporter = nodemailer.createTransport({
 const enviarEmail = async (destinatario, asunto, html) => {
   try {
     await transporter.sendMail({
-      from: `"Brospot" <${process.env.GMAIL_USER}>`,
+      from: `"Orbiport" <${process.env.GMAIL_USER}>`,
       to: destinatario,
       subject: asunto,
       html,
