@@ -1,23 +1,11 @@
-const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 
-const transporter = nodemailer.createTransport({
-  host: 'smtp.gmail.com',
-  port: 587,
-  secure: false,
-  requireTLS: true,
-  auth: {
-    user: process.env.GMAIL_USER,
-    pass: process.env.GMAIL_PASS,
-  },
-  tls: {
-    rejectUnauthorized: false,
-  },
-});
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 const enviarEmail = async (destinatario, asunto, html) => {
   try {
-    await transporter.sendMail({
-      from: `"Orbiport" <${process.env.GMAIL_USER}>`,
+    await resend.emails.send({
+      from: 'Orbiport <onboarding@resend.dev>',
       to: destinatario,
       subject: asunto,
       html,
