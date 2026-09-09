@@ -4,6 +4,9 @@ const transporter = nodemailer.createTransport({
   host: process.env.BREVO_HOST,
   port: Number(process.env.BREVO_PORT),
   secure: false,
+  connectionTimeout: 10000,
+  greetingTimeout: 10000,
+  socketTimeout: 10000,
   auth: {
     user: process.env.BREVO_USER,
     pass: process.env.BREVO_PASS,
@@ -18,6 +21,7 @@ const enviarEmail = async (destinatario, asunto, html) => {
       subject: asunto,
       html,
     });
+
     console.log(`Email enviado a ${destinatario}`);
   } catch (err) {
     console.error('Error al enviar email:', err);
