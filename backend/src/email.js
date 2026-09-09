@@ -14,6 +14,8 @@ const transporter = nodemailer.createTransport({
 });
 
 const enviarEmail = async (destinatario, asunto, html) => {
+  console.log('📧 INTENTANDO ENVIAR EMAIL A:', destinatario);
+
   try {
     await transporter.sendMail({
       from: '"Orbiport" <b882d8001@smtp-brevo.com>',
@@ -22,10 +24,11 @@ const enviarEmail = async (destinatario, asunto, html) => {
       html,
     });
 
-    console.log(`Email enviado a ${destinatario}`);
+    console.log('✅ EMAIL ENVIADO CORRECTAMENTE A:', destinatario);
   } catch (err) {
-    console.error('Error al enviar email:', err);
+    console.error('❌ ERROR AL ENVIAR EMAIL:', err);
   }
 };
+
 
 module.exports = { enviarEmail };
