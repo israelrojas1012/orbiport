@@ -437,7 +437,15 @@ useEffect(() => {
     }
   };
 
-  const cargarFotos = (lugar_id) => API.get(`/fotos/${lugar_id}`).then(res => setFotos(res.data)).catch(() => {});
+  const cargarFotos = (lugar_id) =>
+  API.get(`/fotos/${lugar_id}`)
+    .then(res => {
+      console.log('FOTOS DEL LUGAR:', res.data);
+      setFotos(res.data);
+    })
+    .catch(err => {
+      console.error('ERROR AL CARGAR FOTOS:', err);
+    });
 
   const subirFoto = async (e) => {
     const file = e.target.files[0];

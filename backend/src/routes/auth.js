@@ -41,11 +41,11 @@ router.post('/registro', async (req, res) => {
 
   const contrasenaRegex = /^(?=.*[a-zA-Z])(?=.*[0-9]).{6,}$/;
   if (!contrasenaRegex.test(contrasena)) {
-    return res.status(400).json({ error: 'La contrasena debe tener letras y numeros, minimo 6 caracteres' });
+    return res.status(400).json({ error: 'La contraseña debe contener letras y números, un mínimo de 6 caracteres.' });
   }
 
   if (!acepto_terminos) {
-    return res.status(400).json({ error: 'Debes aceptar los terminos y condiciones para registrarte' });
+    return res.status(400).json({ error: 'Debe aceptar los terminos y condiciones para registrarse' });
   }
 
   try {
