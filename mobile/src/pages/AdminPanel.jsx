@@ -159,6 +159,8 @@ useEffect(() => {
   console.log('ADMIN ID:', usuario.id);
 
   API.get(`/admin/lugar/${usuario.id}`).then(res => {
+    console.log('LUGAR RECIBIDO:', res.data);
+    
     setLugar(res.data);
     setInfoForm(res.data);
     cargarHorarios(res.data.id);
