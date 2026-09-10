@@ -11,17 +11,32 @@ const pool = new Pool({
   database: process.env.DB_NAME,
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
+  ssl: { rejectUnauthorized: false }
 });
 
-const tokensVerificacion = {};
+// Limpieza automática de tokens expirados
+const limpiarTokensExpirados = async () => {
+  try {
+    await pool.query(
+      'DELETE FROM tokens_registro WHERE expira_en < NOW()'
+    );
+  } catch (err) {
+    console.error('Error limpiando tokens:', err);
+  }
+};
+
+// Ejecutar limpieza cada 30 minutos
+setInterval(limpiarTokensExpirados, 30 * 60 * 1000);
 
 // REGISTRO
 router.post('/registro', async (req, res) => {
   const { nombre, apellido, correo, contrasena, acepto_terminos } = req.body;
 
-  const correoRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!correoRegex.test(correo)) {
-    return res.status(400).json({ error: 'Correo no valido' });
+  const correoNormalizado = correo?.trim().toLowerCase();
+
+  const correoRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9-]{2,}(?:\.[a-zA-Z0-9-]+)*\.[a-zA-Z]{2,}$/;
+  if (!correoNormalizado || !correoRegex.test(correoNormalizado)) {
+    return res.status(400).json({ error: 'Ingresa un correo electrónico válido' });
   }
 
   const contrasenaRegex = /^(?=.*[a-zA-Z])(?=.*[0-9]).{6,}$/;
@@ -34,24 +49,39 @@ router.post('/registro', async (req, res) => {
   }
 
   try {
-    const existe = await pool.query('SELECT id FROM usuarios WHERE correo = $1', [correo]);
+    // Verificar si ya existe cuenta verificada
+    const existe = await pool.query(
+      'SELECT id FROM usuarios WHERE LOWER(correo) = $1',
+      [correoNormalizado]
+    );
+
     if (existe.rows.length > 0) {
       return res.status(400).json({ error: 'El correo ya esta registrado' });
     }
 
-    const hash = await bcrypt.hash(contrasena, 10);
-    const result = await pool.query(
-      `INSERT INTO usuarios (nombre, apellido, correo, contrasena, verificado, acepto_terminos, fecha_acepto_terminos) 
-       VALUES ($1, $2, $3, $4, false, true, NOW()) 
-       RETURNING id, nombre, correo`,
-      [nombre, apellido, correo, hash]
+    // Eliminar tokens anteriores del mismo correo
+    await pool.query(
+      'DELETE FROM tokens_registro WHERE correo = $1',
+      [correoNormalizado]
     );
 
-    const token = Math.random().toString(36).substring(2, 8).toUpperCase();
-    tokensVerificacion[correo] = { token, expira: Date.now() + 30 * 60 * 1000 };
+    const hash = await bcrypt.hash(contrasena, 10);
+
+    const token = Math.random()
+      .toString(36)
+      .substring(2, 8)
+      .toUpperCase();
+
+    // Guardar token en base de datos
+    await pool.query(
+      `INSERT INTO tokens_registro 
+        (correo, token, nombre, apellido, contrasena, expira_en)
+       VALUES ($1, $2, $3, $4, $5, NOW() + INTERVAL '30 minutes')`,
+      [correoNormalizado, token, nombre, apellido, hash]
+    );
 
     await enviarEmail(
-      correo,
+      correoNormalizado,
       'Verifica tu cuenta - Orbiport',
       `
         <div style="font-family: sans-serif; max-width: 400px; margin: 0 auto; padding: 20px;">
@@ -65,25 +95,85 @@ router.post('/registro', async (req, res) => {
       `
     );
 
-    res.status(201).json({ mensaje: 'Cuenta creada. Revisa tu correo para verificarla.', usuario: result.rows[0] });
+    res.status(201).json({
+      mensaje: 'Codigo enviado. Revisa tu correo para verificar tu cuenta.'
+    });
+
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Error en el servidor' });
+    await pool.query(
+      'DELETE FROM tokens_registro WHERE correo = $1',
+      [correoNormalizado]
+    );
+    res.status(500).json({ error: 'No se pudo enviar el codigo de verificacion' });
   }
 });
 
 // VERIFICAR CORREO
 router.post('/verificar', async (req, res) => {
   const { correo, token } = req.body;
+
+  const correoNormalizado = correo?.trim().toLowerCase();
+  const tokenNormalizado = token?.trim().toUpperCase();
+
   try {
-    const registro = tokensVerificacion[correo];
-    if (!registro) return res.status(400).json({ error: 'No hay solicitud activa para este correo' });
-    if (registro.token !== token.toUpperCase()) return res.status(400).json({ error: 'Codigo incorrecto' });
-    if (Date.now() > registro.expira) return res.status(400).json({ error: 'El codigo ha expirado' });
-    await pool.query('UPDATE usuarios SET verificado = true WHERE correo = $1', [correo]);
-    delete tokensVerificacion[correo];
-    res.json({ mensaje: 'Correo verificado correctamente' });
+    // Buscar token en base de datos
+    const registroResult = await pool.query(
+      'SELECT * FROM tokens_registro WHERE correo = $1 AND token = $2',
+      [correoNormalizado, tokenNormalizado]
+    );
+
+    if (registroResult.rows.length === 0) {
+      return res.status(400).json({ error: 'No hay solicitud activa para este correo o codigo incorrecto' });
+    }
+
+    const registro = registroResult.rows[0];
+
+    // Verificar si el código expiró
+    if (new Date() > new Date(registro.expira_en)) {
+      await pool.query(
+        'DELETE FROM tokens_registro WHERE correo = $1',
+        [correoNormalizado]
+      );
+      return res.status(400).json({ error: 'El codigo ha expirado. Solicita uno nuevo' });
+    }
+
+    // Verificar que el correo no fue registrado mientras esperaba
+    const existe = await pool.query(
+      'SELECT id FROM usuarios WHERE LOWER(correo) = $1',
+      [correoNormalizado]
+    );
+
+    if (existe.rows.length > 0) {
+      await pool.query(
+        'DELETE FROM tokens_registro WHERE correo = $1',
+        [correoNormalizado]
+      );
+      return res.status(400).json({ error: 'El correo ya esta registrado' });
+    }
+
+    // Crear usuario verificado
+    const result = await pool.query(
+      `INSERT INTO usuarios
+        (nombre, apellido, correo, contrasena, verificado, acepto_terminos, fecha_acepto_terminos)
+       VALUES ($1, $2, $3, $4, true, true, NOW())
+       RETURNING id, nombre, apellido, correo, rol, acepto_terminos`,
+      [registro.nombre, registro.apellido, registro.correo, registro.contrasena]
+    );
+
+    // Eliminar token usado
+    await pool.query(
+      'DELETE FROM tokens_registro WHERE correo = $1',
+      [correoNormalizado]
+    );
+
+    res.json({
+      mensaje: 'Cuenta creada y correo verificado correctamente',
+      usuario: result.rows[0]
+    });
+
   } catch (err) {
+    console.error(err);
     res.status(500).json({ error: 'Error al verificar' });
   }
 });
@@ -91,24 +181,41 @@ router.post('/verificar', async (req, res) => {
 // LOGIN
 router.post('/login', async (req, res) => {
   const { correo, contrasena } = req.body;
+
+  const correoNormalizado = correo?.trim().toLowerCase();
+
   try {
-    const result = await pool.query('SELECT * FROM usuarios WHERE correo = $1', [correo]);
+    const result = await pool.query(
+      'SELECT * FROM usuarios WHERE LOWER(correo) = $1',
+      [correoNormalizado]
+    );
+
     if (result.rows.length === 0) {
       return res.status(400).json({ error: 'Correo o contrasena incorrectos' });
     }
+
     const usuario = result.rows[0];
+
     const valido = await bcrypt.compare(contrasena, usuario.contrasena);
+
     if (!valido) {
       return res.status(400).json({ error: 'Correo o contrasena incorrectos' });
     }
+
     if (!usuario.verificado) {
-      return res.status(400).json({ error: 'Debes verificar tu correo antes de iniciar sesion', sinVerificar: true, correo });
+      return res.status(400).json({
+        error: 'Debes verificar tu correo antes de iniciar sesion',
+        sinVerificar: true,
+        correo: usuario.correo
+      });
     }
+
     const token = jwt.sign(
       { id: usuario.id, rol: usuario.rol },
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
+
     res.json({
       token,
       usuario: {
@@ -120,7 +227,9 @@ router.post('/login', async (req, res) => {
         acepto_terminos: usuario.acepto_terminos
       }
     });
+
   } catch (err) {
+    console.error(err);
     res.status(500).json({ error: 'Error en el servidor' });
   }
 });
