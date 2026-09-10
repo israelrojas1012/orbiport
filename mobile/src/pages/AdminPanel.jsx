@@ -155,17 +155,19 @@ export default function AdminPanel() {
     }
   };
 
-  useEffect(() => {
-    API.get(`/admin/lugar/${usuario.id}`).then(res => {
-      setLugar(res.data);
-      setInfoForm(res.data);
-      cargarHorarios(res.data.id);
-      cargarInscripciones(res.data.id);
-      cargarFotos(res.data.id);
-      cargarExcepciones(res.data.id);
-      cargarSaldosAuto(res.data.id);
-    }).catch(() => {});
-  }, []);
+useEffect(() => {
+  console.log('ADMIN ID:', usuario.id);
+
+  API.get(`/admin/lugar/${usuario.id}`).then(res => {
+    setLugar(res.data);
+    setInfoForm(res.data);
+    cargarHorarios(res.data.id);
+    cargarInscripciones(res.data.id);
+    cargarFotos(res.data.id);
+    cargarExcepciones(res.data.id);
+    cargarSaldosAuto(res.data.id);
+  }).catch(() => {});
+}, []);
 
   const cargarHorarios = (lugar_id) => API.get(`/admin/horarios/${lugar_id}`).then(res => setHorarios(res.data)).catch(() => {});
   const cargarInscripciones = (lugar_id) => API.get(`/admin/inscripciones/${lugar_id}`).then(res => setInscripciones(res.data)).catch(() => {});
