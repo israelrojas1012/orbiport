@@ -18,11 +18,43 @@ export default function Home() {
   const { tema, cambiarTema } = useTheme();
 
   useEffect(() => {
-    API.get('/lugares').then(res => {
-      setLugares(res.data);
-      setFiltrados(res.data);
-    }).catch(() => {});
-    API.get(`/notificaciones/${usuario.id}`).then(res => setNotificaciones(res.data)).catch(() => {});
+    const cargarLugares = async () => {
+      try {
+        const res = await API.get('/lugares');
+
+        const lugaresConFotos = await Promise.all(
+          res.data.map(async (lugar) => {
+            try {
+              const fotosRes = await API.get(`/fotos/${lugar.id}`);
+
+              const fotosOrdenadas = [...fotosRes.data].sort(
+                (a, b) => (a.orden || 0) - (b.orden || 0)
+              );
+
+              return {
+                ...lugar,
+                foto_url: fotosOrdenadas[0]?.url || lugar.foto_url
+              };
+
+            } catch (err) {
+              return lugar;
+            }
+          })
+        );
+
+        setLugares(lugaresConFotos);
+        setFiltrados(lugaresConFotos);
+
+      } catch (err) {
+        console.error('ERROR AL CARGAR LUGARES:', err);
+      }
+    };
+
+    cargarLugares();
+
+    API.get(`/notificaciones/${usuario.id}`)
+      .then(res => setNotificaciones(res.data))
+      .catch(() => {});
   }, []);
 
   useEffect(() => {

@@ -486,12 +486,12 @@ useEffect(() => {
   const moverFoto = async (indice, direccion) => {
     const nuevoIndice = indice + direccion;
 
-    // No permitir salir de los límites
-    if (nuevoIndice < 0 || nuevoIndice >= fotos.length) return;
+    if (nuevoIndice < 0 || nuevoIndice >= fotos.length) {
+      return;
+    }
 
     const nuevasFotos = [...fotos];
 
-    // Intercambiar las dos fotos
     [nuevasFotos[indice], nuevasFotos[nuevoIndice]] = [
       nuevasFotos[nuevoIndice],
       nuevasFotos[indice]
@@ -502,17 +502,29 @@ useEffect(() => {
         fotos: nuevasFotos
       });
 
-      setFotos(
-        nuevasFotos.map((foto, index) => ({
-          ...foto,
-          orden: index + 1
-        }))
-      );
+      const fotosActualizadas = nuevasFotos.map((foto, index) => ({
+        ...foto,
+        orden: index + 1
+      }));
+
+      setFotos(fotosActualizadas);
+
+      // Si el carrusel estaba viendo una de las fotos intercambiadas,
+      // mantenerlo apuntando a la misma posición visual.
+      if (fotoIndexAdmin === indice) {
+        setFotoIndexAdmin(nuevoIndice);
+      } else if (fotoIndexAdmin === nuevoIndice) {
+        setFotoIndexAdmin(indice);
+      }
 
       mostrarMensaje('Orden de fotos actualizado');
+
     } catch (err) {
       console.error('ERROR AL REORDENAR FOTOS:', err);
-      mostrarMensaje('Error al cambiar el orden de las fotos');
+      mostrarMensaje(
+        err.response?.data?.error ||
+        'Error al cambiar el orden de las fotos'
+      );
     }
   };
 
