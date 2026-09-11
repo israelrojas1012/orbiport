@@ -1,7 +1,8 @@
- const express = require('express');
+const express = require('express');
 const router = express.Router();
 const { Pool } = require('pg');
 const { upload, eliminarImagen } = require('../cloudinary');
+
 
 const pool = new Pool({
   host: process.env.DB_HOST,
@@ -68,6 +69,50 @@ router.delete('/:id', async (req, res) => {
     res.json({ mensaje: 'Foto eliminada' });
   } catch (err) {
     res.status(500).json({ error: 'Error al eliminar foto' });
+  }
+});
+
+// REORDENAR FOTOS
+router.put('/orden', async (req, res) => {
+  try {
+    const { fotos } = req.body;
+
+    if (!Array.isArray(fotos) || fotos.length === 0) {
+      return res.status(400).json({ error: 'No se recibió un orden válido' });
+    }
+
+    const lugarIdResult = await pool.query(
+      'SELECT lugar_id FROM fotos_lugares WHERE id = $1',
+      [fotos[0].id]
+    );
+
+    if (lugarIdResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Foto no encontrada' });
+    }
+
+    const lugar_id = lugarIdResult.rows[0].lugar_id;
+
+    for (let i = 0; i < fotos.length; i++) {
+      await pool.query(
+        'UPDATE fotos_lugares SET orden = $1 WHERE id = $2 AND lugar_id = $3',
+        [i + 1, fotos[i].id, lugar_id]
+      );
+    }
+
+    // La foto en posición 1 se convierte en portada
+    await pool.query(
+      'UPDATE lugares SET foto_url = $1 WHERE id = $2',
+      [fotos[0].url, lugar_id]
+    );
+
+    res.json({
+      mensaje: 'Orden de fotos actualizado',
+      portada: fotos[0].url
+    });
+
+  } catch (err) {
+    console.error('Error al reordenar fotos:', err);
+    res.status(500).json({ error: 'Error al reordenar fotos' });
   }
 });
 

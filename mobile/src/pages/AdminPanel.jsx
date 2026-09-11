@@ -450,28 +450,69 @@ useEffect(() => {
   const subirFoto = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
+
     setSubiendoFoto(true);
+
     const formData = new FormData();
     formData.append('foto', file);
+
     try {
       await API.post(`/fotos/${lugar.id}`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
+
       cargarFotos(lugar.id);
       mostrarMensaje('Foto subida correctamente');
     } catch (err) {
       mostrarMensaje('Error al subir foto');
     }
+
     setSubiendoFoto(false);
   };
 
   const eliminarFoto = async (id) => {
     try {
       await API.delete(`/fotos/${id}`);
+
       setFotos(prev => prev.filter(f => f.id !== id));
+
       mostrarMensaje('Foto eliminada');
     } catch (err) {
       mostrarMensaje('Error al eliminar foto');
+    }
+  };
+
+  // MOVER FOTO Y CAMBIAR PORTADA
+  const moverFoto = async (indice, direccion) => {
+    const nuevoIndice = indice + direccion;
+
+    // No permitir salir de los límites
+    if (nuevoIndice < 0 || nuevoIndice >= fotos.length) return;
+
+    const nuevasFotos = [...fotos];
+
+    // Intercambiar las dos fotos
+    [nuevasFotos[indice], nuevasFotos[nuevoIndice]] = [
+      nuevasFotos[nuevoIndice],
+      nuevasFotos[indice]
+    ];
+
+    try {
+      await API.put('/fotos/orden', {
+        fotos: nuevasFotos
+      });
+
+      setFotos(
+        nuevasFotos.map((foto, index) => ({
+          ...foto,
+          orden: index + 1
+        }))
+      );
+
+      mostrarMensaje('Orden de fotos actualizado');
+    } catch (err) {
+      console.error('ERROR AL REORDENAR FOTOS:', err);
+      mostrarMensaje('Error al cambiar el orden de las fotos');
     }
   };
 
@@ -846,10 +887,91 @@ useEffect(() => {
                     <p style={styles.galeriaVacia}>Aún no has subido fotos</p>
                   ) : (
                     <div style={styles.galeriaGrid}>
-                      {fotos.map(f => (
+                      {fotos.map((f, indice) => (
                         <div key={f.id} style={styles.galeriaFotoItem}>
-                          <img src={f.url} alt="foto" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                          <button onClick={() => eliminarFoto(f.id)} style={styles.btnEliminarFoto}>✕</button>
+
+                          <img
+                            src={f.url}
+                            alt={`Foto ${indice + 1}`}
+                            style={{
+                              width: '100%',
+                              height: '100%',
+                              objectFit: 'cover'
+                            }}
+                          />
+
+                          {/* Indicador de posición */}
+                          <div
+                            style={{
+                              position: 'absolute',
+                              top: '8px',
+                              left: '8px',
+                              background: 'rgba(0, 0, 0, 0.75)',
+                              color: '#fff',
+                              padding: '5px 9px',
+                              borderRadius: '6px',
+                              fontSize: '12px',
+                              fontWeight: 'bold'
+                            }}
+                          >
+                            {indice === 0 ? '⭐ PORTADA' : `Foto ${indice + 1}`}
+                          </div>
+
+                          {/* Controles */}
+                          <div
+                            style={{
+                              position: 'absolute',
+                              bottom: '8px',
+                              left: '8px',
+                              right: '8px',
+                              display: 'flex',
+                              gap: '6px',
+                              justifyContent: 'center'
+                            }}
+                          >
+
+                            {/* Mover arriba */}
+                            <button
+                              onClick={() => moverFoto(indice, -1)}
+                              disabled={indice === 0}
+                              style={{
+                                border: 'none',
+                                borderRadius: '6px',
+                                padding: '7px 11px',
+                                cursor: indice === 0 ? 'default' : 'pointer',
+                                opacity: indice === 0 ? 0.4 : 1
+                              }}
+                              title="Mover a la izquierda"
+                            >
+                              ⬅️
+                            </button>
+
+                            {/* Mover abajo */}
+                            <button
+                              onClick={() => moverFoto(indice, 1)}
+                              disabled={indice === fotos.length - 1}
+                              style={{
+                                border: 'none',
+                                borderRadius: '6px',
+                                padding: '7px 11px',
+                                cursor: indice === fotos.length - 1 ? 'default' : 'pointer',
+                                opacity: indice === fotos.length - 1 ? 0.4 : 1
+                              }}
+                              title="Mover a la derecha"
+                            >
+                              ➡️
+                            </button>
+
+                            {/* Eliminar */}
+                            <button
+                              onClick={() => eliminarFoto(f.id)}
+                              style={styles.btnEliminarFoto}
+                              title="Eliminar foto"
+                            >
+                              🗑️
+                            </button>
+
+                          </div>
                         </div>
                       ))}
                     </div>
