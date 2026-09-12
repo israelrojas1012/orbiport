@@ -2,6 +2,7 @@
 const router = express.Router();
 const bcrypt = require('bcryptjs');
 const { Pool } = require('pg');
+const { enviarEmail } = require('../email');
 
 const pool = new Pool({
   host: process.env.DB_HOST,
@@ -36,12 +37,29 @@ router.put('/:id/password', async (req, res) => {
     if (!contrasenaRegex.test(nueva)) {
       return res.status(400).json({ error: 'La nueva contrasena debe tener letras y numeros, minimo 6 caracteres' });
     }
-    const result = await pool.query('SELECT contrasena FROM usuarios WHERE id=$1', [id]);
+    const result = await pool.query(
+      'SELECT contrasena, correo, nombre FROM usuarios WHERE id=$1',
+      [id]
+    );
     if (result.rows.length === 0) return res.status(404).json({ error: 'Usuario no encontrado' });
     const valido = await bcrypt.compare(actual, result.rows[0].contrasena);
-    if (!valido) return res.status(400).json({ error: 'La contrasena actual es incorrecta' });
+    if (!valido) return res.status(400).json({ error: 'La contraseña actual es incorrecta' });
     const hash = await bcrypt.hash(nueva, 10);
     await pool.query('UPDATE usuarios SET contrasena=$1 WHERE id=$2', [hash, id]);
+    await enviarEmail(
+      result.rows[0].correo,
+      'Contraseña actualizada - Orbiport',
+      `
+        <div style="font-family: sans-serif; max-width: 400px; margin: 0 auto; padding: 20px;">
+          <h2 style="color: #4f46e5;">Contraseña actualizada</h2>
+          <p>Hola ${result.rows[0].nombre},</p>
+          <p>Tu contraseña de Orbiport fue cambiada correctamente.</p>
+          <p style="color: #999; font-size: 13px;">
+            Si tú no realizaste este cambio, revisa tu cuenta inmediatamente.
+          </p>
+        </div>
+      `
+    );
     res.json({ mensaje: 'Contrasena actualizada' });
   } catch (err) {
     res.status(500).json({ error: 'Error al cambiar contrasena' });
