@@ -247,9 +247,20 @@ export default function Registro() {
           <span style={styles.infoIcon}>💡</span>
           <p style={styles.infoTexto}>
             ¿Quieres registrar tu centro?{' '}
-            <strong style={styles.infoBold}>Contáctanos</strong> y te creamos una cuenta de administrador.
+            <a
+              href="mailto:biro20001021@gmail.com?subject=Quiero registrar mi centro en Orbiport"
+              style={{
+                ...styles.infoBold,
+                textDecoration: 'none',
+                cursor: 'pointer',
+              }}
+            >
+              Contáctanos
+            </a>{' '}
+            y te creamos una cuenta de administrador.
           </p>
         </div>
+
       </div>
     </div>
   );
