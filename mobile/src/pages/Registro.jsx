@@ -251,7 +251,8 @@ export default function Registro() {
               href="mailto:biro20001021@gmail.com?subject=Quiero registrar mi centro en Orbiport"
               style={{
                 ...styles.infoBold,
-                textDecoration: 'none',
+                color: 'var(--color-primario)',
+                textDecoration: 'underline',
                 cursor: 'pointer',
               }}
             >
