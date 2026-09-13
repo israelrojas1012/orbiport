@@ -156,6 +156,16 @@ export default function DetalleLugar() {
     }
   };
 
+  const cancelarSolicitud = async () => {
+    try {
+      await API.delete(`/inscripciones/cancelar/${usuario.id}/${id}`);
+      setEstadoInscripcion(null);
+      mostrarToast('Solicitud cancelada correctamente.', 'exito');
+    } catch (err) {
+      mostrarToast(err.response?.data?.error || 'Error al cancelar', 'error');
+    }
+  };
+
   const abrirMaps = () => {
     if (lugar.maps_url) {
       window.open(lugar.maps_url, '_blank');
@@ -192,9 +202,24 @@ export default function DetalleLugar() {
     }
     if (estadoInscripcion === 'pendiente') {
       return (
-        <div style={styles.pendienteBadge}>
-          <span style={styles.badgeIcon}>⏳</span>
-          <span>Solicitud pendiente de aprobación</span>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div style={styles.pendienteBadge}>
+            <span style={styles.badgeIcon}>⏳</span>
+            <span>Solicitud pendiente de aprobación</span>
+          </div>
+          <button
+            style={{
+              ...styles.pendienteBadge,
+              background: 'rgba(239, 68, 68, 0.1)',
+              color: 'var(--color-error)',
+              border: '1px solid rgba(239, 68, 68, 0.2)',
+              cursor: 'pointer',
+            }}
+            onClick={cancelarSolicitud}
+          >
+            <span>✕</span>
+            <span>Cancelar solicitud</span>
+          </button>
         </div>
       );
     }

@@ -78,4 +78,32 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
+router.delete('/cancelar/:usuario_id/:lugar_id', async (req, res) => {
+  try {
+    const { usuario_id, lugar_id } = req.params;
+
+    const inscripcion = await pool.query(
+      'SELECT id, estado FROM inscripciones WHERE usuario_id=$1 AND lugar_id=$2',
+      [usuario_id, lugar_id]
+    );
+
+    if (inscripcion.rows.length === 0) {
+      return res.status(404).json({ error: 'No se encontró la solicitud' });
+    }
+
+    if (inscripcion.rows[0].estado !== 'pendiente') {
+      return res.status(400).json({ error: 'Solo puedes cancelar solicitudes pendientes' });
+    }
+
+    await pool.query(
+      'DELETE FROM inscripciones WHERE usuario_id=$1 AND lugar_id=$2',
+      [usuario_id, lugar_id]
+    );
+
+    res.json({ mensaje: 'Solicitud cancelada correctamente' });
+  } catch (err) {
+    res.status(500).json({ error: 'Error al cancelar solicitud' });
+  }
+});
+
 module.exports = router;
