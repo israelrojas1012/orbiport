@@ -97,7 +97,30 @@ router.put('/inscripciones/:id', async (req, res) => {
 router.delete('/inscripciones/:id', async (req, res) => {
   try {
     const { id } = req.params;
+
+    // Obtener datos antes de eliminar
+    const inscripcion = await pool.query(`
+      SELECT i.usuario_id, l.nombre AS lugar_nombre
+      FROM inscripciones i
+      JOIN lugares l ON i.lugar_id = l.id
+      WHERE i.id = $1
+    `, [id]);
+
+    if (inscripcion.rows.length === 0) {
+      return res.status(404).json({ error: 'Inscripcion no encontrada' });
+    }
+
+    const { usuario_id, lugar_nombre } = inscripcion.rows[0];
+
+    // Eliminar inscripcion
     await pool.query('DELETE FROM inscripciones WHERE id = $1', [id]);
+
+    // Enviar notificacion al usuario
+    await pool.query(
+      'INSERT INTO notificaciones (usuario_id, mensaje) VALUES ($1, $2)',
+      [usuario_id, `Has sido eliminado del establecimiento "${lugar_nombre}". Si crees que es un error contacta al administrador.`]
+    );
+
     res.json({ mensaje: 'Inscripcion eliminada' });
   } catch (err) {
     res.status(500).json({ error: 'Error al eliminar inscripcion' });
