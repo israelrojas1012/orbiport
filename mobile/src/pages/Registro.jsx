@@ -7,6 +7,7 @@ import TerminosModal from '../components/TerminosModal';
 export default function Registro() {
   const [paso, setPaso] = useState(1);
   const [form, setForm] = useState({ nombre: '', apellido: '', correo: '', contrasena: '' });
+  const [confirmarContrasena, setConfirmarContrasena] = useState('');
   const [token, setToken] = useState('');
   const [error, setError] = useState('');
   const [exito, setExito] = useState('');
@@ -17,6 +18,10 @@ export default function Registro() {
   const { tema, cambiarTema } = useTheme();
 
   const handleRegistro = async () => {
+    if (form.contrasena !== confirmarContrasena) {
+      setError('Las contraseñas no coinciden');
+      return;
+    }
     if (!aceptoTerminos) {
       setError('Debes aceptar los terminos y condiciones para continuar');
       return;
@@ -148,6 +153,19 @@ export default function Registro() {
               />
               <p style={styles.hint}>Letras y números, mínimo 6 caracteres</p>
             </div>
+
+            {/* NUEVO — confirmar contraseña */}
+            <div style={styles.inputGroup}>
+              <label style={styles.label}>Confirmar contraseña</label>
+              <input
+                style={styles.input}
+                placeholder="••••••••"
+                type="password"
+                value={confirmarContrasena}
+                onChange={e => setConfirmarContrasena(e.target.value)}
+              />
+            </div>
+
 
             {/* CHECKBOX TERMINOS Y CONDICIONES */}
             <div
