@@ -39,15 +39,29 @@ const validarTiempoMinimo = (fecha, hora_inicio) => {
 
   const ahora = obtenerAhoraEcuador();
 
-  const [year, month, day] = String(fecha).slice(0, 10).split('-');
-  const [h, m] = String(hora_inicio).slice(0, 5).split(':');
+  const fechaStr = fecha instanceof Date
+    ? fecha.toISOString().slice(0, 10)
+    : String(fecha).slice(0, 10);
+
+  const horaStr = String(hora_inicio).slice(0, 5);
+
+  const [year, month, day] = fechaStr.split('-').map(Number);
+  const [hora, minuto] = horaStr.split(':').map(Number);
+
+  if (
+    !year || !month || !day ||
+    Number.isNaN(hora) ||
+    Number.isNaN(minuto)
+  ) {
+    return false;
+  }
 
   const fechaObjetivo = new Date(Date.UTC(
-    Number(year),
-    Number(month) - 1,
-    Number(day),
-    Number(h),
-    Number(m),
+    year,
+    month - 1,
+    day,
+    hora,
+    minuto,
     0
   ));
 
@@ -195,6 +209,12 @@ router.delete('/:id', async (req, res) => {
         error: 'No se pudo determinar la fecha y hora de la reserva'
       });
     }
+
+    console.log('🕐 VALIDANDO CANCELACIÓN:', {
+      fecha: r.fecha,
+      hora_inicio: r.hora_inicio,
+      tipo_fecha: typeof r.fecha
+    });
 
     if (!validarTiempoMinimo(r.fecha, r.hora_inicio)) {
       return res.status(400).json({
