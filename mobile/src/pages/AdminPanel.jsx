@@ -45,6 +45,10 @@ export default function AdminPanel() {
   const [inscripciones, setInscripciones] = useState([]);
   const [tab, setTab] = useState('info');
   const [mensaje, setMensaje] = useState('');
+  const mostrarMensaje = (texto) => {
+    setMensaje(texto);
+    setTimeout(() => setMensaje(''), 3000);
+  };
   const [fechaAsistencia, setFechaAsistencia] = useState(() => {
     const hoy = new Date();
     const yy = hoy.getFullYear();
@@ -393,7 +397,6 @@ useEffect(() => {
         </div>
       )}
 
-      {/* MODAL DIA ESPECIAL */}
     
 
       <div style={styles.content}>
