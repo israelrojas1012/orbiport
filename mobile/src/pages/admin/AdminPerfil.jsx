@@ -16,6 +16,9 @@ export default function AdminPerfil({ usuario, lugar, mostrarMensaje, styles }) 
   });
 
   const [editandoPassAdmin, setEditandoPassAdmin] = useState(false);
+  const [mostrarActualAdmin, setMostrarActualAdmin] = useState(false);
+  const [mostrarNuevaAdmin, setMostrarNuevaAdmin] = useState(false);
+  const [mostrarConfirmarAdmin, setMostrarConfirmarAdmin] = useState(false);
 
   const guardarPerfilAdmin = async () => {
     try {
@@ -204,34 +207,62 @@ export default function AdminPerfil({ usuario, lugar, mostrarMensaje, styles }) 
           <div style={styles.formGroup}>
             <div style={styles.inputGroup}>
               <label style={styles.label}>Contraseña actual</label>
-              <input
-                style={styles.input}
-                type="password"
-                placeholder="••••••••"
-                value={passFormAdmin.actual}
-                onChange={e =>
-                  setPassFormAdmin({
-                    ...passFormAdmin,
-                    actual: e.target.value
-                  })
-                }
-              />
+
+              <div style={styles.passwordWrap}>
+                <input
+                  style={styles.passwordInput}
+                  type={mostrarActualAdmin ? 'text' : 'password'}
+                  placeholder="••••••••"
+                  value={passFormAdmin.actual}
+                  onChange={e =>
+                    setPassFormAdmin({
+                      ...passFormAdmin,
+                      actual: e.target.value
+                    })
+                  }
+                />
+
+                <button
+                  type="button"
+                  style={styles.togglePassword}
+                  onClick={() => setMostrarActualAdmin(!mostrarActualAdmin)}
+                  aria-label={
+                    mostrarActualAdmin ? 'Ocultar contraseña' : 'Mostrar contraseña'
+                  }
+                >
+                  {mostrarActualAdmin ? '🙈' : '👁️'}
+                </button>
+              </div>
             </div>
 
             <div style={styles.inputGroup}>
               <label style={styles.label}>Nueva contraseña</label>
-              <input
-                style={styles.input}
-                type="password"
-                placeholder="••••••••"
-                value={passFormAdmin.nueva}
-                onChange={e =>
-                  setPassFormAdmin({
-                    ...passFormAdmin,
-                    nueva: e.target.value
-                  })
-                }
-              />
+
+              <div style={styles.passwordWrap}>
+                <input
+                  style={styles.passwordInput}
+                  type={mostrarNuevaAdmin ? 'text' : 'password'}
+                  placeholder="••••••••"
+                  value={passFormAdmin.nueva}
+                  onChange={e =>
+                    setPassFormAdmin({
+                      ...passFormAdmin,
+                      nueva: e.target.value
+                    })
+                  }
+                />
+
+                <button
+                  type="button"
+                  style={styles.togglePassword}
+                  onClick={() => setMostrarNuevaAdmin(!mostrarNuevaAdmin)}
+                  aria-label={
+                    mostrarNuevaAdmin ? 'Ocultar contraseña' : 'Mostrar contraseña'
+                  }
+                >
+                  {mostrarNuevaAdmin ? '🙈' : '👁️'}
+                </button>
+              </div>
             </div>
 
             <div style={styles.inputGroup}>
@@ -239,18 +270,33 @@ export default function AdminPerfil({ usuario, lugar, mostrarMensaje, styles }) 
                 Confirmar nueva contraseña
               </label>
 
-              <input
-                style={styles.input}
-                type="password"
-                placeholder="••••••••"
-                value={passFormAdmin.confirmar}
-                onChange={e =>
-                  setPassFormAdmin({
-                    ...passFormAdmin,
-                    confirmar: e.target.value
-                  })
-                }
-              />
+              <div style={styles.passwordWrap}>
+                <input
+                  style={styles.passwordInput}
+                  type={mostrarConfirmarAdmin ? 'text' : 'password'}
+                  placeholder="••••••••"
+                  value={passFormAdmin.confirmar}
+                  onChange={e =>
+                    setPassFormAdmin({
+                      ...passFormAdmin,
+                      confirmar: e.target.value
+                    })
+                  }
+                />
+
+                <button
+                  type="button"
+                  style={styles.togglePassword}
+                  onClick={() => setMostrarConfirmarAdmin(!mostrarConfirmarAdmin)}
+                  aria-label={
+                    mostrarConfirmarAdmin
+                      ? 'Ocultar contraseña'
+                      : 'Mostrar contraseña'
+                  }
+                >
+                  {mostrarConfirmarAdmin ? '🙈' : '👁️'}
+                </button>
+              </div>
 
               <p style={styles.hint}>
                 Letras y números, mínimo 6 caracteres

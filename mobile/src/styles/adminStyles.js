@@ -323,6 +323,38 @@ const adminStyles = {
       fontSize: 14,
       width: '100%',
     },
+    passwordWrap: {
+      position: 'relative',
+      display: 'flex',
+      alignItems: 'center',
+    },
+
+    passwordInput: {
+      padding: '11px 14px',
+      paddingRight: 48,
+      borderRadius: 'var(--radius-sm)',
+      border: '1.5px solid var(--border-suave)',
+      background: 'var(--bg-input)',
+      color: 'var(--text-principal)',
+      fontSize: 14,
+      width: '100%',
+    },
+
+    togglePassword: {
+      position: 'absolute',
+      right: 10,
+      width: 32,
+      height: 32,
+      border: 'none',
+      background: 'transparent',
+      color: 'var(--text-secundario)',
+      fontSize: 17,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      cursor: 'pointer',
+      padding: 0,
+    },
     inputSmall: {
       padding: '9px 12px',
       borderRadius: 'var(--radius-sm)',
