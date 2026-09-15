@@ -10,9 +10,57 @@ const pool = new Pool({
   password: process.env.DB_PASSWORD,
 });
 
+const obtenerAhoraEcuador = () => {
+  const partes = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Guayaquil',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hourCycle: 'h23'
+  }).formatToParts(new Date());
+
+  const get = tipo => Number(partes.find(p => p.type === tipo).value);
+
+  return new Date(Date.UTC(
+    get('year'),
+    get('month') - 1,
+    get('day'),
+    get('hour'),
+    get('minute'),
+    get('second')
+  ));
+};
+
+const validarTiempoMinimo = (fecha, hora_inicio) => {
+  if (!fecha || !hora_inicio) return false;
+
+  const ahora = obtenerAhoraEcuador();
+
+  const [year, month, day] = String(fecha).slice(0, 10).split('-');
+  const [h, m] = String(hora_inicio).slice(0, 5).split(':');
+
+  const fechaObjetivo = new Date(Date.UTC(
+    Number(year),
+    Number(month) - 1,
+    Number(day),
+    Number(h),
+    Number(m),
+    0
+  ));
+
+  const diferenciaHoras =
+    (fechaObjetivo - ahora) / (1000 * 60 * 60);
+
+  return diferenciaHoras >= 2;
+};
+
 router.get('/usuario/:id', async (req, res) => {
   try {
     const { id } = req.params;
+
     const result = await pool.query(`
       SELECT r.id, r.fecha, r.estado, r.horario_id, r.excepcion_id,
              l.nombre as lugar_nombre,
@@ -26,6 +74,7 @@ router.get('/usuario/:id', async (req, res) => {
       WHERE r.usuario_id = $1
       ORDER BY r.creado_en DESC
     `, [id]);
+
     res.json(result.rows);
   } catch (err) {
     res.status(500).json({ error: 'Error al obtener reservas' });
@@ -41,7 +90,9 @@ router.post('/', async (req, res) => {
 
     const columna = excepcion_id ? 'excepcion_id' : 'horario_id';
     const id = excepcion_id || horario_id;
-    const tabla = excepcion_id ? 'horarios_excepciones' : 'horarios_plantilla';
+    const tabla = excepcion_id
+      ? 'horarios_excepciones'
+      : 'horarios_plantilla';
 
     const existe = await client.query(
       `SELECT id FROM reservas
@@ -57,7 +108,10 @@ router.post('/', async (req, res) => {
     }
 
     const horario = await client.query(
-      `SELECT cupos FROM ${tabla} WHERE id = $1 FOR UPDATE`,
+      `SELECT cupos, hora_inicio
+       FROM ${tabla}
+       WHERE id = $1
+       FOR UPDATE`,
       [id]
     );
 
@@ -67,6 +121,13 @@ router.post('/', async (req, res) => {
         error: excepcion_id
           ? 'Horario especial no encontrado'
           : 'Horario no encontrado'
+      });
+    }
+
+    if (!validarTiempoMinimo(fecha, horario.rows[0].hora_inicio)) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({
+        error: '⏰ No puedes reservar con menos de 2 horas de anticipación'
       });
     }
 
@@ -110,6 +171,7 @@ router.post('/', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   try {
     const { id } = req.params;
+
     const reserva = await pool.query(`
       SELECT r.*,
              COALESCE(h.hora_inicio, e.hora_inicio) as hora_inicio,
@@ -121,24 +183,31 @@ router.delete('/:id', async (req, res) => {
     `, [id]);
 
     if (reserva.rows.length === 0) {
-      return res.status(404).json({ error: 'Reserva no encontrada' });
+      return res.status(404).json({
+        error: 'Reserva no encontrada'
+      });
     }
 
     const r = reserva.rows[0];
-    const ahora = new Date();
-    const [h, m] = r.hora_inicio.split(':');
-    const fechaReserva = new Date(r.fecha);
-    fechaReserva.setHours(parseInt(h), parseInt(m), 0, 0);
-    const diff = (fechaReserva - ahora) / (1000 * 60 * 60);
 
-    if (diff < 2) {
-      return res.status(400).json({ error: '⏰ No puedes cancelar con menos de 2 horas de anticipación' });
+    if (!validarTiempoMinimo(r.fecha, r.hora_inicio)) {
+      return res.status(400).json({
+        error: '⏰ No puedes cancelar con menos de 2 horas de anticipación'
+      });
     }
 
-    await pool.query('DELETE FROM reservas WHERE id = $1', [id]);
-    res.json({ mensaje: 'Reserva cancelada' });
+    await pool.query(
+      'DELETE FROM reservas WHERE id = $1',
+      [id]
+    );
+
+    res.json({
+      mensaje: 'Reserva cancelada'
+    });
   } catch (err) {
-    res.status(500).json({ error: 'Error al cancelar reserva' });
+    res.status(500).json({
+      error: 'Error al cancelar reserva'
+    });
   }
 });
 

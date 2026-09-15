@@ -154,16 +154,74 @@ export default function DetalleLugar() {
 
   const cancelarReserva = async (reserva) => {
     try {
-      await API.delete(`/reservas/${reserva.id}`);
-      setReservasHechas(prev => prev.filter(r => r.id !== reserva.id));
-      if (reserva.excepcion_id) {
-        setExcepciones(prev => prev.map(e => e.id === reserva.excepcion_id ? { ...e, reservados: Math.max(0, (e.reservados || 0) - 1) } : e));
-      } else {
-        setHorarios(prev => prev.map(h => h.id === reserva.horario_id ? { ...h, reservados: Math.max(0, (h.reservados || 0) - 1) } : h));
+      const partes = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'America/Guayaquil',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hourCycle: 'h23'
+      }).formatToParts(new Date());
+
+      const get = tipo => Number(partes.find(p => p.type === tipo).value);
+
+      const ahora = new Date(Date.UTC(
+        get('year'),
+        get('month') - 1,
+        get('day'),
+        get('hour'),
+        get('minute'),
+        get('second')
+      ));
+
+      const [year, month, day] = String(reserva.fecha).slice(0, 10).split('-');
+      const [hora, minuto] = String(reserva.hora_inicio).slice(0, 5).split(':');
+
+      const fechaReserva = new Date(Date.UTC(
+        Number(year),
+        Number(month) - 1,
+        Number(day),
+        Number(hora),
+        Number(minuto),
+        0
+      ));
+
+      const diferenciaHoras =
+        (fechaReserva - ahora) / (1000 * 60 * 60);
+
+      if (diferenciaHoras < 2) {
+        mostrarToast(
+          'Solo puedes cancelar con al menos 2 horas de anticipación',
+          'error'
+        );
+        return;
       }
-      mostrarToast('Reserva cancelada correctamente', 'exito');
+
+      await API.delete(`/reservas/${reserva.id}`);
+
+      setReservasHechas(prev =>
+        prev.filter(r => r.id !== reserva.id)
+      );
+
+      if (reserva.excepcion_id) {
+        const actualizadas = await API.get(`/lugares/excepciones/lugar/${id}`);
+        setExcepciones(actualizadas.data);
+      } else {
+        const actualizados = await API.get(`/admin/horarios/${id}`);
+        setHorarios(actualizados.data);
+      }
+
+      mostrarToast(
+        'Reserva cancelada correctamente',
+        'exito'
+      );
     } catch (err) {
-      mostrarToast(err.response?.data?.error || 'Error al cancelar', 'error');
+      mostrarToast(
+        err.response?.data?.error || 'Error al cancelar',
+        'error'
+      );
     }
   };
 

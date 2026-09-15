@@ -10,21 +10,82 @@ const pool = new Pool({
   password: process.env.DB_PASSWORD,
 });
 
+const obtenerAhoraEcuador = () => {
+  const partes = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Guayaquil',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hourCycle: 'h23'
+  }).formatToParts(new Date());
+
+  const get = tipo => Number(partes.find(p => p.type === tipo).value);
+
+  return new Date(Date.UTC(
+    get('year'),
+    get('month') - 1,
+    get('day'),
+    get('hour'),
+    get('minute'),
+    get('second')
+  ));
+};
+
 const validarTiempoMinimo = (dia, hora_inicio) => {
-  const dias = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
-  const ahora = new Date();
-  const diaActual = ahora.getDay();
+  const dias = [
+    'Domingo',
+    'Lunes',
+    'Martes',
+    'Miércoles',
+    'Jueves',
+    'Viernes',
+    'Sábado'
+  ];
+
+  const ahora = obtenerAhoraEcuador();
   const diaObjetivo = dias.indexOf(dia);
-  let diff = diaObjetivo - diaActual;
-  if (diff < 0) diff += 7;
-  if (diff === 0) {
-    const [h, m] = hora_inicio.split(':');
-    const horaObjetivo = new Date();
-    horaObjetivo.setHours(parseInt(h), parseInt(m), 0, 0);
-    const diff_horas = (horaObjetivo - ahora) / (1000 * 60 * 60);
-    if (diff_horas < 2) return false;
-  }
-  return true;
+
+  if (diaObjetivo === -1 || !hora_inicio) return false;
+
+  let diffDias = diaObjetivo - ahora.getUTCDay();
+  if (diffDias < 0) diffDias += 7;
+
+  const [h, m] = String(hora_inicio).slice(0, 5).split(':');
+
+  const horaObjetivo = new Date(ahora);
+  horaObjetivo.setUTCDate(ahora.getUTCDate() + diffDias);
+  horaObjetivo.setUTCHours(Number(h), Number(m), 0, 0);
+
+  const diferenciaHoras =
+    (horaObjetivo - ahora) / (1000 * 60 * 60);
+
+  return diferenciaHoras >= 24;
+};
+
+const validarFechaHoraMinima = (fecha, hora_inicio) => {
+  if (!fecha || !hora_inicio) return false;
+
+  const ahora = obtenerAhoraEcuador();
+
+  const [year, month, day] = String(fecha).slice(0, 10).split('-');
+  const [h, m] = String(hora_inicio).slice(0, 5).split(':');
+
+  const fechaObjetivo = new Date(Date.UTC(
+    Number(year),
+    Number(month) - 1,
+    Number(day),
+    Number(h),
+    Number(m),
+    0
+  ));
+
+  const diferenciaHoras =
+    (fechaObjetivo - ahora) / (1000 * 60 * 60);
+
+  return diferenciaHoras >= 24;
 };
 
 router.get('/lugar/:admin_id', async (req, res) => {
@@ -184,7 +245,9 @@ router.post('/horarios', async (req, res) => {
   try {
     const { lugar_id, dia, hora_inicio, hora_fin, cupos, tipo_cancha } = req.body;
     if (!validarTiempoMinimo(dia, hora_inicio)) {
-      return res.status(400).json({ error: 'No puedes crear un horario con menos de 2 horas de anticipacion' });
+      return res.status(400).json({
+        error: 'No puedes crear un horario con menos de 24 horas de anticipación'
+      });
     }
     if (hora_fin <= hora_inicio) {
       return res.status(400).json({ error: 'La hora de fin debe ser mayor que la hora de inicio' });
@@ -222,7 +285,7 @@ router.put('/horarios/:id', async (req, res) => {
 
     if (!validarTiempoMinimo(dia, hora_inicio)) {
       return res.status(400).json({
-        error: 'No puedes editar un horario con menos de 2 horas de anticipación'
+        error: 'No puedes editar un horario con menos de 24 horas de anticipación'
       });
     }
 
@@ -322,7 +385,9 @@ router.delete('/horarios/:id', async (req, res) => {
     if (horario.rows.length > 0) {
       const h = horario.rows[0];
       if (!validarTiempoMinimo(h.dia, h.hora_inicio)) {
-        return res.status(400).json({ error: 'No puedes eliminar un horario con menos de 2 horas de anticipacion' });
+        return res.status(400).json({
+          error: 'No puedes eliminar un horario con menos de 24 horas de anticipación'
+        });
       }
     }
     const reservas = await pool.query(
@@ -363,6 +428,12 @@ router.post('/horarios/copiar', async (req, res) => {
     const copiados = [];
     for (const dia of dias_destino) {
       for (const h of horariosOrigen.rows) {
+        if (!validarTiempoMinimo(dia, h.hora_inicio)) {
+          errores.push(
+            `No se puede copiar ${h.hora_inicio.slice(0, 5)}-${h.hora_fin.slice(0, 5)} a ${dia} porque faltan menos de 24 horas para su inicio`
+          );
+          continue;
+        }
         const existe = await pool.query(
           `SELECT id FROM horarios_plantilla 
            WHERE lugar_id=$1 AND dia=$2 AND activo=true
@@ -395,6 +466,38 @@ router.post('/horarios/copiar', async (req, res) => {
 router.post('/excepciones', async (req, res) => {
   try {
     const { lugar_id, fecha, horarios, cerrado, motivo } = req.body;
+
+    if (cerrado) {
+      const ahora = obtenerAhoraEcuador();
+
+      const [year, month, day] = String(fecha).slice(0, 10).split('-');
+
+      const fechaObjetivo = new Date(Date.UTC(
+        Number(year),
+        Number(month) - 1,
+        Number(day),
+        0,
+        0,
+        0
+      ));
+
+      const diferenciaHoras =
+        (fechaObjetivo - ahora) / (1000 * 60 * 60);
+
+      if (diferenciaHoras < 24) {
+        return res.status(400).json({
+          error: 'No puedes cerrar un día con menos de 24 horas de anticipación'
+        });
+      }
+    } else if (horarios?.length > 0) {
+      for (const h of horarios) {
+        if (!validarFechaHoraMinima(fecha, h.hora_inicio)) {
+          return res.status(400).json({
+            error: 'No puedes crear un día especial con menos de 24 horas de anticipación'
+          });
+        }
+      }
+    }
 
     await pool.query('DELETE FROM horarios_excepciones WHERE lugar_id=$1 AND fecha=$2', [lugar_id, fecha]);
 
@@ -521,61 +624,104 @@ router.put('/excepcion/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const { hora_inicio, hora_fin, cupos } = req.body;
+
     if (hora_fin <= hora_inicio) {
-      return res.status(400).json({ error: 'La hora de fin debe ser mayor que la hora de inicio' });
+      return res.status(400).json({
+        error: 'La hora de fin debe ser mayor que la hora de inicio'
+      });
     }
+
     if (!cupos || cupos < 1) {
-      return res.status(400).json({ error: 'Los cupos deben ser al menos 1' });
+      return res.status(400).json({
+        error: 'Los cupos deben ser al menos 1'
+      });
     }
+
+    const actual = await pool.query(
+      'SELECT fecha FROM horarios_excepciones WHERE id=$1',
+      [id]
+    );
+
+    if (actual.rows.length === 0) {
+      return res.status(404).json({
+        error: 'Horario especial no encontrado'
+      });
+    }
+
+    const { fecha } = actual.rows[0];
+
+    if (!validarFechaHoraMinima(fecha, hora_inicio)) {
+      return res.status(400).json({
+        error: 'No puedes editar un horario especial con menos de 24 horas de anticipación'
+      });
+    }
+
     await pool.query(
-      'UPDATE horarios_excepciones SET hora_inicio=$1, hora_fin=$2, cupos=$3 WHERE id=$4',
+      `UPDATE horarios_excepciones
+       SET hora_inicio=$1, hora_fin=$2, cupos=$3
+       WHERE id=$4`,
       [hora_inicio, hora_fin, cupos, id]
     );
-    res.json({ mensaje: 'Horario especial actualizado' });
+
+    res.json({
+      mensaje: 'Horario especial actualizado'
+    });
   } catch (err) {
-    res.status(500).json({ error: 'Error al actualizar horario especial' });
+    console.error('Error al actualizar horario especial:', err);
+    res.status(500).json({
+      error: 'Error al actualizar horario especial'
+    });
   }
 });
 
-// ELIMINAR UN HORARIO ESPECIAL INDIVIDUAL (sin borrar los otros del mismo dia)
+// ELIMINAR UN HORARIO ESPECIAL INDIVIDUAL
 router.delete('/excepcion/:id', async (req, res) => {
   try {
     const { id } = req.params;
 
     const excepcion = await pool.query(
-      'SELECT fecha FROM horarios_excepciones WHERE id = $1',
+      'SELECT fecha, hora_inicio FROM horarios_excepciones WHERE id = $1',
       [id]
     );
+
     if (excepcion.rows.length === 0) {
-      return res.status(404).json({ error: 'Horario especial no encontrado' });
+      return res.status(404).json({
+        error: 'Horario especial no encontrado'
+      });
     }
 
-    const fechaExcepcion = new Date(excepcion.rows[0].fecha);
-    const hoy = new Date();
-    hoy.setHours(0, 0, 0, 0);
-    // <= hoy para que el día de hoy también se pueda eliminar libremente
-    const yaPaso = fechaExcepcion <= hoy;
+    const { fecha, hora_inicio } = excepcion.rows[0];
 
-    if (yaPaso) {
-      await pool.query('DELETE FROM reservas WHERE excepcion_id = $1', [id]);
-      await pool.query('DELETE FROM horarios_excepciones WHERE id = $1', [id]);
-      return res.json({ mensaje: 'Horario especial eliminado' });
+    if (!validarFechaHoraMinima(fecha, hora_inicio)) {
+      return res.status(400).json({
+        error: 'No puedes eliminar un horario especial con menos de 24 horas de anticipación'
+      });
     }
 
     const reservas = await pool.query(
       'SELECT COUNT(*) FROM reservas WHERE excepcion_id = $1',
       [id]
     );
+
     if (parseInt(reservas.rows[0].count) > 0) {
       return res.status(400).json({
         error: `No puedes eliminar este horario especial porque tiene ${reservas.rows[0].count} reserva(s) activa(s). Cancela primero las reservas desde la sección de inscritos.`
       });
     }
 
-    await pool.query('DELETE FROM horarios_excepciones WHERE id = $1', [id]);
-    res.json({ mensaje: 'Horario especial eliminado' });
+    await pool.query(
+      'DELETE FROM horarios_excepciones WHERE id = $1',
+      [id]
+    );
+
+    res.json({
+      mensaje: 'Horario especial eliminado'
+    });
   } catch (err) {
-    res.status(500).json({ error: 'Error al eliminar horario especial' });
+    console.error('Error al eliminar horario especial:', err);
+    res.status(500).json({
+      error: 'Error al eliminar horario especial'
+    });
   }
 });
 
