@@ -5,6 +5,7 @@ import { useTheme } from '../context/ThemeContext';
 import TerminosModal from '../components/TerminosModal';
 import AdminPerfil from './admin/AdminPerfil';
 import AdminInfo from './admin/AdminInfo';
+import AdminHorarios from './admin/AdminHorarios';
 
 const DIAS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
 const DIAS_JS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
@@ -42,10 +43,8 @@ export default function AdminPanel() {
   const usuario = JSON.parse(localStorage.getItem('usuario') || '{}');
   const [lugar, setLugar] = useState(null);
   const [inscripciones, setInscripciones] = useState([]);
-  const [horarios, setHorarios] = useState([]);
   const [tab, setTab] = useState('info');
   const [mensaje, setMensaje] = useState('');
-  const [mensajeCopia, setMensajeCopia] = useState('');
   const [fechaAsistencia, setFechaAsistencia] = useState(() => {
     const hoy = new Date();
     const yy = hoy.getFullYear();
@@ -61,21 +60,7 @@ export default function AdminPanel() {
   const [mensajeAsistencia, setMensajeAsistencia] = useState('');
   const [horariosDelDia, setHorariosDelDia] = useState([]);
   const [horarioActivo, setHorarioActivo] = useState(null);
-  const [nuevoHorario, setNuevoHorario] = useState({ hora_inicio: '', hora_fin: '', cupos: '', tipo_cancha: '' });
-  const [diaSeleccionado, setDiaSeleccionado] = useState(null);
-  const [horarioEditando, setHorarioEditando] = useState(null);
-  const [editForm, setEditForm] = useState({});
-  const [copiandoDia, setCopiandoDia] = useState(null);
-  const [horariosSeleccionados, setHorariosSeleccionados] = useState([]);
-  const [diasCopia, setDiasCopia] = useState([]);
   const [confirmarEliminar, setConfirmarEliminar] = useState(null);
-  const [modalEspecial, setModalEspecial] = useState(false);
-  const [fechaEspecial, setFechaEspecial] = useState('');
-  const [tipoEspecial, setTipoEspecial] = useState('');
-  const [motivoEspecial, setMotivoEspecial] = useState('');
-  const [horariosEspeciales, setHorariosEspeciales] = useState([{ hora_inicio: '', hora_fin: '', cupos: '' }]);
-  const [excepciones, setExcepciones] = useState([]);
-  const [mensajeEspecial, setMensajeEspecial] = useState('');
   const [perfilForm, setPerfilForm] = useState({ nombre: usuario.nombre || '', apellido: usuario.apellido || '' });
   const [editandoPerfil, setEditandoPerfil] = useState(false);
   const [passFormAdmin, setPassFormAdmin] = useState({ actual: '', nueva: '', confirmar: '' });
@@ -86,9 +71,6 @@ export default function AdminPanel() {
   const [modalInscritos, setModalInscritos] = useState(null);
   const [personasInscritas, setPersonasInscritas] = useState([]);
   const [fechaInscritos, setFechaInscritos] = useState('');
-  // NUEVO: estados para editar horarios especiales individuales
-  const [horarioEspecialEditando, setHorarioEspecialEditando] = useState(null);
-  const [editFormEspecial, setEditFormEspecial] = useState({});
 
   useEffect(() => {
     if (usuario.acepto_terminos === false) {
@@ -159,208 +141,13 @@ useEffect(() => {
     console.log('NOMBRE DEL LUGAR:', res.data.nombre);
 
     setLugar(res.data);
-    cargarHorarios(res.data.id);
     cargarInscripciones(res.data.id);
-    cargarExcepciones(res.data.id);
     cargarSaldosAuto(res.data.id);
+    
   }).catch(() => {});
 }, []);
 
-  const cargarHorarios = (lugar_id) => API.get(`/admin/horarios/${lugar_id}`).then(res => setHorarios(res.data)).catch(() => {});
-  const cargarInscripciones = (lugar_id) => API.get(`/admin/inscripciones/${lugar_id}`).then(res => setInscripciones(res.data)).catch(() => {});
-  const cargarExcepciones = (lugar_id) => API.get(`/admin/excepciones/${lugar_id}`).then(res => setExcepciones(res.data)).catch(() => {});
-
-  const mostrarMensaje = (msg) => {
-    setMensaje(msg);
-    setTimeout(() => setMensaje(''), 4000);
-  };
-
-  const aprobarInscripcion = async (id) => {
-    await API.put(`/admin/inscripciones/${id}`, { estado: 'aprobada' });
-    setInscripciones(inscripciones.map(i => i.id === id ? { ...i, estado: 'aprobada' } : i));
-  };
-
-  const rechazarInscripcion = async (id) => {
-    await API.put(`/admin/inscripciones/${id}`, { estado: 'rechazada' });
-    setInscripciones(inscripciones.map(i => i.id === id ? { ...i, estado: 'rechazada' } : i));
-  };
-
-  const eliminarInscripcion = async (id) => {
-    try {
-      await API.delete(`/admin/inscripciones/${id}`);
-      setInscripciones(prev => prev.filter(x => x.id !== id));
-      setConfirmarEliminar(null);
-      mostrarMensaje('Inscripción eliminada');
-    } catch (err) {
-      mostrarMensaje('Error al eliminar');
-    }
-  };
-
-  const agregarHorario = async () => {
-    if (!nuevoHorario.hora_inicio || !nuevoHorario.hora_fin || !nuevoHorario.cupos) {
-      mostrarMensaje('Completa todos los campos');
-      return;
-    }
-    if (lugar.categoria === 'canchas' && !nuevoHorario.tipo_cancha) {
-      mostrarMensaje('Selecciona el tipo de cancha');
-      return;
-    }
-    try {
-      await API.post('/admin/horarios', { lugar_id: lugar.id, dia: diaSeleccionado, ...nuevoHorario });
-      cargarHorarios(lugar.id);
-      setNuevoHorario({ hora_inicio: '', hora_fin: '', cupos: '', tipo_cancha: '' });
-      mostrarMensaje('Horario agregado');
-    } catch (err) {
-      mostrarMensaje(err.response?.data?.error || 'Error al agregar');
-    }
-  };
-
-  const guardarEdicion = async () => {
-    try {
-      await API.put(`/admin/horarios/${horarioEditando.id}`, { ...editForm, dia: horarioEditando.dia, activo: true });
-      cargarHorarios(lugar.id);
-      setHorarioEditando(null);
-      mostrarMensaje('Horario editado');
-    } catch (err) {
-      mostrarMensaje(err.response?.data?.error || 'Error al editar');
-    }
-  };
-
-  // NUEVO: guardar edición de un horario especial individual
-  const guardarEdicionEspecial = async () => {
-    if (editFormEspecial.hora_fin <= editFormEspecial.hora_inicio) {
-      mostrarMensaje('La hora de fin debe ser mayor que la hora de inicio');
-      return;
-    }
-    try {
-      await API.put(`/admin/excepcion/${horarioEspecialEditando.id}`, editFormEspecial);
-      cargarExcepciones(lugar.id);
-      setHorarioEspecialEditando(null);
-      mostrarMensaje('Horario especial actualizado');
-    } catch (err) {
-      mostrarMensaje(err.response?.data?.error || 'Error al actualizar');
-    }
-  };
-
-  // NUEVO: eliminar un horario especial individual (sin borrar los otros del mismo día)
-  const eliminarHorarioEspecialIndividual = async (id) => {
-    try {
-      await API.delete(`/admin/excepcion/${id}`);
-      cargarExcepciones(lugar.id);
-      mostrarMensaje('Horario especial eliminado');
-    } catch (err) {
-      mostrarMensaje(err.response?.data?.error || 'Error al eliminar horario especial');
-    }
-  };
-
-  const eliminarHorario = async (id) => {
-    try {
-      await API.delete(`/admin/horarios/${id}`);
-      cargarHorarios(lugar.id);
-      mostrarMensaje('Horario eliminado');
-    } catch (err) {
-      mostrarMensaje(err.response?.data?.error || 'Error al eliminar');
-    }
-  };
-
-  const copiarHorarios = async () => {
-    if (diasCopia.length === 0) return setMensajeCopia('Selecciona al menos un día destino');
-    if (horariosSeleccionados.length === 0) return setMensajeCopia('Selecciona al menos un horario');
-    try {
-      const res = await API.post('/admin/horarios/copiar', {
-        lugar_id: lugar.id,
-        horarios_ids: horariosSeleccionados,
-        dias_destino: diasCopia
-      });
-      cargarHorarios(lugar.id);
-      setCopiandoDia(null);
-      setDiasCopia([]);
-      setHorariosSeleccionados([]);
-      setMensajeCopia('');
-      if (res.data.errores && res.data.errores.length > 0) {
-        mostrarMensaje('Algunos horarios no se copiaron por conflictos');
-      } else {
-        mostrarMensaje('Horarios copiados correctamente');
-      }
-    } catch (err) {
-      setMensajeCopia(err.response?.data?.error || 'Error al copiar');
-    }
-  };
-
-  const abrirModalEspecial = () => {
-    setModalEspecial(true);
-    setFechaEspecial('');
-    setTipoEspecial('');
-    setMotivoEspecial('');
-    setHorariosEspeciales([{ hora_inicio: '', hora_fin: '', cupos: '' }]);
-    setMensajeEspecial('');
-  };
-
-  const cerrarModalEspecial = () => {
-    setModalEspecial(false);
-    setFechaEspecial('');
-    setTipoEspecial('');
-    setMotivoEspecial('');
-    setHorariosEspeciales([{ hora_inicio: '', hora_fin: '', cupos: '' }]);
-    setMensajeEspecial('');
-  };
-
-  const agregarHorarioEspecial = () => setHorariosEspeciales(prev => [...prev, { hora_inicio: '', hora_fin: '', cupos: '' }]);
-  const quitarHorarioEspecial = (i) => setHorariosEspeciales(prev => prev.filter((_, idx) => idx !== i));
-  const actualizarHorarioEspecial = (i, campo, valor) => setHorariosEspeciales(prev => prev.map((h, idx) => idx === i ? { ...h, [campo]: valor } : h));
-
-  const guardarExcepcion = async () => {
-    if (!fechaEspecial) return setMensajeEspecial('Selecciona una fecha');
-    if (!tipoEspecial) return setMensajeEspecial('Selecciona cerrado u horario diferente');
-    if (tipoEspecial === 'horario') {
-      const incompletos = horariosEspeciales.some(h => !h.hora_inicio || !h.hora_fin || !h.cupos);
-      if (incompletos) return setMensajeEspecial('Completa todos los campos de los horarios');
-    }
-    try {
-      await API.post('/admin/excepciones', {
-        lugar_id: lugar.id,
-        fecha: fechaEspecial,
-        cerrado: tipoEspecial === 'cerrado',
-        horarios: tipoEspecial === 'horario' ? horariosEspeciales : [],
-        motivo: motivoEspecial,
-      });
-      cargarExcepciones(lugar.id);
-      cerrarModalEspecial();
-      mostrarMensaje('Día especial guardado correctamente');
-    } catch (err) {
-      setMensajeEspecial(err.response?.data?.error || 'Error al guardar');
-    }
-  };
-
-  const eliminarExcepcion = async (fecha) => {
-    try {
-      const fechaLimpia = String(fecha).slice(0, 10);
-      await API.delete(`/admin/excepciones/${lugar.id}/${fechaLimpia}`);
-      cargarExcepciones(lugar.id);
-      mostrarMensaje('Día especial eliminado');
-    } catch (err) {
-      mostrarMensaje('Error al eliminar');
-    }
-  };
-
-  const toggleDiaCopia = (dia) => setDiasCopia(prev => prev.includes(dia) ? prev.filter(d => d !== dia) : [...prev, dia]);
-  const horariosPorDia = (dia) => horarios.filter(h => h.dia === dia && h.activo);
-
-  const excepcionesPorFecha = excepciones.reduce((acc, e) => {
-    const fechaKey = String(e.fecha).slice(0, 10);
-    if (!acc[fechaKey]) acc[fechaKey] = { cerrado: e.cerrado, motivo: e.motivo, horarios: [] };
-    if (!e.cerrado) acc[fechaKey].horarios.push(e);
-    return acc;
-  }, {});
-
-  const cargarAsistencia = async (fecha) => {
-    try {
-      const res = await API.get(`/asistencia/horarios-dia/${lugar.id}/${fecha}`);
-      setHorariosDelDia(res.data);
-      setListaAsistencia([]);
-      setHorarioActivo(null);
-    } catch (err) {}
-  };
+  
 
   const cargarReservasHorario = async (horario) => {
     try {
@@ -607,74 +394,7 @@ useEffect(() => {
       )}
 
       {/* MODAL DIA ESPECIAL */}
-      {modalEspecial && (
-        <div style={styles.modalOverlay}>
-          <div style={styles.modal}>
-            <p style={styles.cardTitulo}>Gestionar día especial</p>
-            <p style={styles.cardSub}>Solo afecta la fecha exacta que elijas</p>
-
-            <div style={styles.inputGroup}>
-              <label style={styles.label}>Fecha</label>
-              <input style={styles.input} type="date" min={new Date().toISOString().split('T')[0]} value={fechaEspecial} onChange={e => setFechaEspecial(e.target.value)} />
-            </div>
-
-            <div style={styles.tipoEspecialRow}>
-              <button
-                style={{
-                  ...styles.diaBadge,
-                  background: tipoEspecial === 'cerrado' ? 'var(--color-error)' : 'var(--bg-hover)',
-                  color: tipoEspecial === 'cerrado' ? '#fff' : 'var(--text-secundario)',
-                  borderColor: tipoEspecial === 'cerrado' ? 'var(--color-error)' : 'var(--border-suave)',
-                }}
-                onClick={() => setTipoEspecial('cerrado')}
-              >
-                🔒 Cerrado ese día
-              </button>
-              <button
-                style={{
-                  ...styles.diaBadge,
-                  background: tipoEspecial === 'horario' ? 'var(--color-primario)' : 'var(--bg-hover)',
-                  color: tipoEspecial === 'horario' ? '#fff' : 'var(--text-secundario)',
-                  borderColor: tipoEspecial === 'horario' ? 'var(--color-primario)' : 'var(--border-suave)',
-                }}
-                onClick={() => setTipoEspecial('horario')}
-              >
-                ⏰ Horario diferente
-              </button>
-            </div>
-
-            {tipoEspecial === 'horario' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <p style={styles.hint}>Estos horarios reemplazan los normales solo en esta fecha:</p>
-                {horariosEspeciales.map((h, i) => (
-                  <div key={i} style={styles.horarioEspecialItem}>
-                    <input style={styles.inputSmall} type="time" value={h.hora_inicio} onChange={e => actualizarHorarioEspecial(i, 'hora_inicio', e.target.value)} />
-                    <input style={styles.inputSmall} type="time" value={h.hora_fin} onChange={e => actualizarHorarioEspecial(i, 'hora_fin', e.target.value)} />
-                    <input style={styles.inputSmall} type="number" inputMode="numeric" placeholder="Cupos" min="1" value={h.cupos} onChange={e => {
-                      const val = parseInt(e.target.value);
-                      if (!isNaN(val) && val >= 1) actualizarHorarioEspecial(i, 'cupos', val);
-                      else if (e.target.value === '') actualizarHorarioEspecial(i, 'cupos', '');
-                    }} />
-                    {horariosEspeciales.length > 1 && (
-                      <button style={styles.btnCancelarSmall} onClick={() => quitarHorarioEspecial(i)}>X</button>
-                    )}
-                  </div>
-                ))}
-                <button style={styles.btnCopiar} onClick={agregarHorarioEspecial}>+ Agregar otro horario</button>
-              </div>
-            )}
-
-            <input style={styles.input} placeholder="Motivo (ej: Feriado nacional)" value={motivoEspecial} onChange={e => setMotivoEspecial(e.target.value)} />
-
-            {mensajeEspecial && <p style={styles.errorTexto}>{mensajeEspecial}</p>}
-
-            <div style={styles.botonesRow}>
-              <button style={styles.btnGuardar} onClick={guardarExcepcion}>Guardar</button>
-              <button style={styles.btnCancelar} onClick={cerrarModalEspecial}>Cancelar</button>
-            </div>
-          </div>
-        </div>
-      )}
+    
 
       <div style={styles.content}>
         {/* TAB INFO */}
@@ -692,281 +412,15 @@ useEffect(() => {
         {/* TAB HORARIOS */}
         {tab === 'horarios' && (
           <div style={styles.tabContent}>
-            <button style={styles.btnEspecial} onClick={abrirModalEspecial}>
-              ⚡ Gestionar día especial
-            </button>
-
-            {Object.keys(excepcionesPorFecha).length > 0 && (
-              <div style={styles.card}>
-                <p style={styles.cardTitulo}>Días especiales programados</p>
-                {Object.entries(excepcionesPorFecha).map(([fecha, datos]) => (
-                  <div key={fecha} style={{
-                    ...styles.excepcionCard,
-                    background: datos.cerrado ? 'rgba(239, 68, 68, 0.1)' : 'rgba(245, 158, 11, 0.1)',
-                    borderColor: datos.cerrado ? 'rgba(239, 68, 68, 0.2)' : 'rgba(245, 158, 11, 0.2)',
-                  }}>
-                    <div style={styles.excepcionHeader}>
-                      <p style={styles.excepcionFecha}>{formatFechaLarga(fecha)}</p>
-                      <button style={styles.btnEliminarHorario} onClick={() => eliminarExcepcion(fecha)}>Eliminar día</button>
-                    </div>
-                    {datos.motivo && <p style={styles.excepcionMotivo}>📌 {datos.motivo}</p>}
-                    {datos.cerrado ? (
-                      <p style={{ fontSize: 12, color: 'var(--color-error)', fontWeight: 700 }}>🔴 Cerrado</p>
-                    ) : (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 4 }}>
-                        {datos.horarios.map(h => (
-                          <div key={h.id}>
-                            {horarioEspecialEditando?.id === h.id ? (
-                              <div style={styles.editRow}>
-                                <input style={styles.inputSmall} type="time" value={editFormEspecial.hora_inicio} onChange={e => setEditFormEspecial({ ...editFormEspecial, hora_inicio: e.target.value })} />
-                                <input style={styles.inputSmall} type="time" value={editFormEspecial.hora_fin} onChange={e => setEditFormEspecial({ ...editFormEspecial, hora_fin: e.target.value })} />
-                                <input style={styles.inputSmall} type="number" inputMode="numeric" placeholder="Cupos" min="1"
-                                  value={editFormEspecial.cupos}
-                                  onChange={e => {
-                                    const val = parseInt(e.target.value);
-                                    if (!isNaN(val) && val >= 1) setEditFormEspecial({ ...editFormEspecial, cupos: val });
-                                    else if (e.target.value === '') setEditFormEspecial({ ...editFormEspecial, cupos: '' });
-                                  }}
-                                />
-                                <button style={styles.btnGuardarSmall} onClick={guardarEdicionEspecial}>OK</button>
-                                <button style={styles.btnCancelarSmall} onClick={() => setHorarioEspecialEditando(null)}>X</button>
-                              </div>
-                            ) : (
-                              <div style={styles.horarioRowConBoton}>
-                                <div style={{ ...styles.horarioRow, borderLeft: '3px solid var(--color-advertencia)' }}>
-                                  <span style={{ ...styles.horarioTexto, color: 'var(--color-advertencia)' }}>
-                                    {formatHora(h.hora_inicio)} - {formatHora(h.hora_fin)}
-                                  </span>
-                                  <span style={styles.cuposTexto}>👥 {h.cupos} cupos</span>
-                                  <button style={styles.btnEditarHorario} onClick={() => {
-                                    setHorarioEspecialEditando(h);
-                                    setEditFormEspecial({ hora_inicio: h.hora_inicio.slice(0, 5), hora_fin: h.hora_fin.slice(0, 5), cupos: h.cupos });
-                                  }}>Editar</button>
-                                  <button style={styles.btnEliminarHorario} onClick={() => eliminarHorarioEspecialIndividual(h.id)}>Eliminar</button>
-                                </div>
-                                <button
-                                  style={{ ...styles.btnVerInscritos, borderColor: 'rgba(245,158,11,0.4)', color: 'var(--color-advertencia)', background: 'rgba(245,158,11,0.08)' }}
-                                  onClick={() => {
-                                    setFechaInscritos(fecha.slice(0, 10));
-                                    verInscritosAdmin(h, fecha.slice(0, 10));
-                                  }}
-                                >
-                                  👥 Ver inscritos
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-
-            <p style={styles.hint}>Toca un día para gestionar sus horarios normales.</p>
-
-            {copiandoDia && (
-              <div style={styles.modalOverlay}>
-                <div style={styles.modal}>
-                  <p style={styles.cardTitulo}>Copiar horarios de {copiandoDia}</p>
-                  <p style={styles.cardSub}>Selecciona los horarios a copiar:</p>
-                  <div style={styles.checkboxLista}>
-                    {horariosPorDia(copiandoDia).map(h => (
-                      <label key={h.id} style={{
-                        ...styles.checkboxItem,
-                        background: horariosSeleccionados.includes(h.id) ? 'var(--color-primario-suave)' : 'var(--bg-hover)',
-                        borderColor: horariosSeleccionados.includes(h.id) ? 'var(--color-primario-borde)' : 'var(--border-suave)',
-                      }}>
-                        <input
-                          type="checkbox"
-                          checked={horariosSeleccionados.includes(h.id)}
-                          onChange={() => setHorariosSeleccionados(prev =>
-                            prev.includes(h.id) ? prev.filter(id => id !== h.id) : [...prev, h.id]
-                          )}
-                        />
-                        <span style={{ fontWeight: 700, color: 'var(--color-primario)' }}>{formatHora(h.hora_inicio)} - {formatHora(h.hora_fin)}</span>
-                        <span style={{ color: 'var(--text-secundario)' }}>· {h.cupos} cupos</span>
-                      </label>
-                    ))}
-                  </div>
-                  <p style={styles.cardSub}>Copiar a estos días:</p>
-                  <div style={styles.diasGrid}>
-                    {DIAS.filter(d => d !== copiandoDia).map(d => (
-                      <button
-                        key={d}
-                        onClick={() => toggleDiaCopia(d)}
-                        style={{
-                          ...styles.diaBadge,
-                          background: diasCopia.includes(d) ? 'var(--color-primario)' : 'var(--bg-hover)',
-                          color: diasCopia.includes(d) ? '#fff' : 'var(--text-secundario)',
-                          borderColor: diasCopia.includes(d) ? 'var(--color-primario)' : 'var(--border-suave)',
-                        }}
-                      >
-                        {d}
-                      </button>
-                    ))}
-                  </div>
-                  {mensajeCopia && <p style={styles.errorTexto}>{mensajeCopia}</p>}
-                  <div style={styles.botonesRow}>
-                    <button style={styles.btnGuardar} onClick={copiarHorarios}>Copiar</button>
-                    <button style={styles.btnCancelar} onClick={() => { setCopiandoDia(null); setDiasCopia([]); setHorariosSeleccionados([]); setMensajeCopia(''); }}>Cancelar</button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {DIAS.map(dia => {
-              const hoyTmp = new Date();
-              const diaActualTmp = hoyTmp.getDay();
-              const diaObjetivoTmp = DIAS_JS.indexOf(dia);
-              let diffDias = diaObjetivoTmp - diaActualTmp;
-              if (diffDias < 0) diffDias += 7;
-              const fechaProxima = new Date(hoyTmp);
-              fechaProxima.setDate(hoyTmp.getDate() + diffDias);
-              const yy = fechaProxima.getFullYear();
-              const mm = String(fechaProxima.getMonth() + 1).padStart(2, '0');
-              const dd = String(fechaProxima.getDate()).padStart(2, '0');
-              const fechaProximaStr = `${yy}-${mm}-${dd}`;
-              const tieneExcepcion = excepcionesPorFecha[fechaProximaStr];
-
-              return (
-                <div key={dia} style={styles.diaCard}>
-                  <div style={styles.diaHeader} onClick={() => setDiaSeleccionado(diaSeleccionado === dia ? null : dia)}>
-                    <div style={styles.diaNombreWrap}>
-                      <span style={styles.diaNombre}>{dia}</span>
-                      <span style={styles.diaFecha}>{getFechaDelDia(dia)}</span>
-                      {tieneExcepcion && (
-                        <span style={{
-                          fontSize: 10,
-                          color: tieneExcepcion.cerrado ? 'var(--color-error)' : 'var(--color-advertencia)',
-                          fontWeight: 700,
-                          marginTop: 2
-                        }}>
-                          {tieneExcepcion.cerrado ? '🔴 CERRADO' : '⚡ ESPECIAL'}
-                        </span>
-                      )}
-                    </div>
-                    <div style={styles.horariosResumen}>
-                      {horariosPorDia(dia).length === 0 ? (
-                        <span style={styles.cerradoBadge}>Sin horarios</span>
-                      ) : (
-                        horariosPorDia(dia).map(h => (
-                          <span key={h.id} style={styles.horarioBadge}>
-                            {formatHora(h.hora_inicio)}-{formatHora(h.hora_fin)}
-                          </span>
-                        ))
-                      )}
-                    </div>
-                    <span style={styles.chevron}>{diaSeleccionado === dia ? '▲' : '▼'}</span>
-                  </div>
-
-                  {diaSeleccionado === dia && (
-                    <div style={styles.diaDetalle}>
-                      {tieneExcepcion && (
-                        <div style={{
-                          ...styles.motivoBox,
-                          background: tieneExcepcion.cerrado ? 'rgba(239, 68, 68, 0.1)' : 'rgba(245, 158, 11, 0.1)',
-                          color: tieneExcepcion.cerrado ? 'var(--color-error)' : 'var(--color-advertencia)',
-                          border: `1px solid ${tieneExcepcion.cerrado ? 'rgba(239, 68, 68, 0.2)' : 'rgba(245, 158, 11, 0.2)'}`,
-                        }}>
-                          {tieneExcepcion.cerrado ? '🔒 Cerrado este día (excepción)' : '⚡ Este día tiene horarios especiales que reemplazan los normales'}
-                        </div>
-                      )}
-
-                      {horariosPorDia(dia).map(h => (
-                        <div key={h.id}>
-                          {horarioEditando?.id === h.id ? (
-                            <div style={styles.editRow}>
-                              <input style={styles.inputSmall} type="time" value={editForm.hora_inicio} onChange={e => setEditForm({ ...editForm, hora_inicio: e.target.value })} />
-                              <input style={styles.inputSmall} type="time" value={editForm.hora_fin} onChange={e => setEditForm({ ...editForm, hora_fin: e.target.value })} />
-                              <input style={styles.inputSmall} type="number" inputMode="numeric" pattern="[0-9]*" placeholder={lugar.categoria === 'canchas' ? 'Cant.' : 'Cupos'} min="1"
-                                value={editForm.cupos}
-                                onChange={e => {
-                                  const val = parseInt(e.target.value);
-                                  if (!isNaN(val) && val >= 1) setEditForm({ ...editForm, cupos: val });
-                                  else if (e.target.value === '') setEditForm({ ...editForm, cupos: '' });
-                                }}
-                              />
-                              {lugar.categoria === 'canchas' && (
-                                <select style={styles.inputSmall} value={editForm.tipo_cancha || ''} onChange={e => setEditForm({ ...editForm, tipo_cancha: e.target.value })}>
-                                  <option value="">Tipo</option>
-                                  <option value="5vs5">5 vs 5</option>
-                                  <option value="6vs6">6 vs 6</option>
-                                  <option value="7vs7">7 vs 7</option>
-                                  <option value="8vs8">8 vs 8</option>
-                                  <option value="9vs9">9 vs 9</option>
-                                  <option value="10vs10">10 vs 10</option>
-                                  <option value="11vs11">11 vs 11</option>
-                                </select>
-                              )}
-                              <button style={styles.btnGuardarSmall} onClick={guardarEdicion}>OK</button>
-                              <button style={styles.btnCancelarSmall} onClick={() => setHorarioEditando(null)}>X</button>
-                            </div>
-                          ) : (
-                            <div style={styles.horarioRowConBoton}>
-                              <div style={styles.horarioRow}>
-                                <span style={styles.horarioTexto}>{formatHora(h.hora_inicio)} - {formatHora(h.hora_fin)}</span>
-                                <span style={styles.cuposTexto}>
-                                  {lugar.categoria === 'canchas' ? '⚽' : '👥'} {h.cupos} {lugar.categoria === 'canchas' ? `cancha(s) ${h.tipo_cancha || ''}` : 'cupos totales'}
-                                </span>
-                                <button style={styles.btnEditarHorario} onClick={() => { setHorarioEditando(h); setEditForm({ hora_inicio: h.hora_inicio.slice(0,5), hora_fin: h.hora_fin.slice(0,5), cupos: h.cupos, tipo_cancha: h.tipo_cancha || '' }); }}>Editar</button>
-                                <button style={styles.btnEliminarHorario} onClick={() => eliminarHorario(h.id)}>Eliminar</button>
-                              </div>
-                              <button
-                                style={styles.btnVerInscritos}
-                                onClick={() => {
-                                  const fechaPx = obtenerFechaProxima(dia);
-                                  setFechaInscritos(fechaPx);
-                                  verInscritosAdmin(h, fechaPx);
-                                }}
-                              >
-                                👥 Ver inscritos
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-
-                      {horariosPorDia(dia).length > 0 && (
-                        <button style={styles.btnCopiar} onClick={() => { setCopiandoDia(dia); setDiasCopia([]); setHorariosSeleccionados([]); setMensajeCopia(''); }}>
-                          📋 Copiar horarios de {dia} a otros días
-                        </button>
-                      )}
-
-                      <div style={styles.agregarHorario}>
-                        <p style={styles.agregarTitulo}>+ Agregar horario para {dia}</p>
-                        <div style={styles.inputsRow}>
-                          <input style={styles.inputSmall} type="time" value={nuevoHorario.hora_inicio} onChange={e => setNuevoHorario({ ...nuevoHorario, hora_inicio: e.target.value })} />
-                          <input style={styles.inputSmall} type="time" value={nuevoHorario.hora_fin} onChange={e => setNuevoHorario({ ...nuevoHorario, hora_fin: e.target.value })} />
-                          <input style={styles.inputSmall} type="number" inputMode="numeric" pattern="[0-9]*" placeholder={lugar.categoria === 'canchas' ? 'Cant. canchas' : 'Cupos'} min="1"
-                            value={nuevoHorario.cupos}
-                            onChange={e => {
-                              const val = parseInt(e.target.value);
-                              if (!isNaN(val) && val >= 1) setNuevoHorario({ ...nuevoHorario, cupos: val });
-                              else if (e.target.value === '') setNuevoHorario({ ...nuevoHorario, cupos: '' });
-                            }}
-                          />
-                        </div>
-                        {lugar.categoria === 'canchas' && (
-                          <select style={styles.input} value={nuevoHorario.tipo_cancha} onChange={e => setNuevoHorario({ ...nuevoHorario, tipo_cancha: e.target.value })}>
-                            <option value="">Tipo de cancha</option>
-                            <option value="5vs5">5 vs 5</option>
-                            <option value="6vs6">6 vs 6</option>
-                            <option value="7vs7">7 vs 7</option>
-                            <option value="8vs8">8 vs 8</option>
-                            <option value="9vs9">9 vs 9</option>
-                            <option value="10vs10">10 vs 10</option>
-                            <option value="11vs11">11 vs 11</option>
-                          </select>
-                        )}
-                        <button style={styles.btnAgregar} onClick={agregarHorario}>Agregar horario</button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+            <AdminHorarios
+              lugar={lugar}
+              mostrarMensaje={mostrarMensaje}
+              styles={styles}
+              onVerInscritos={(h, fecha) => {
+                setFechaInscritos(fecha);
+                verInscritosAdmin(h, fecha);
+              }}
+            />
           </div>
         )}
 
