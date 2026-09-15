@@ -174,8 +174,8 @@ router.delete('/:id', async (req, res) => {
 
     const reserva = await pool.query(`
       SELECT r.*,
-             COALESCE(h.hora_inicio, e.hora_inicio) as hora_inicio,
-             COALESCE(h.dia, 'Especial') as dia
+             COALESCE(h.hora_inicio, e.hora_inicio) AS hora_inicio,
+             COALESCE(h.dia, 'Especial') AS dia
       FROM reservas r
       LEFT JOIN horarios_plantilla h ON r.horario_id = h.id
       LEFT JOIN horarios_excepciones e ON r.excepcion_id = e.id
@@ -189,6 +189,12 @@ router.delete('/:id', async (req, res) => {
     }
 
     const r = reserva.rows[0];
+
+    if (!r.fecha || !r.hora_inicio) {
+      return res.status(400).json({
+        error: 'No se pudo determinar la fecha y hora de la reserva'
+      });
+    }
 
     if (!validarTiempoMinimo(r.fecha, r.hora_inicio)) {
       return res.status(400).json({
@@ -205,6 +211,8 @@ router.delete('/:id', async (req, res) => {
       mensaje: 'Reserva cancelada'
     });
   } catch (err) {
+    console.error('Error al cancelar reserva:', err);
+
     res.status(500).json({
       error: 'Error al cancelar reserva'
     });
