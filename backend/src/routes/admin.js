@@ -131,19 +131,51 @@ router.get('/horarios/:lugar_id', async (req, res) => {
   try {
     const { lugar_id } = req.params;
     const result = await pool.query(
-      `SELECT h.*, 
-        (SELECT COUNT(*) FROM reservas r WHERE r.horario_id = h.id AND r.fecha >= CURRENT_DATE) as reservados
-       FROM horarios_plantilla h 
-       WHERE h.lugar_id = $1 
-       ORDER BY 
-       CASE h.dia 
-         WHEN 'Lunes' THEN 1 WHEN 'Martes' THEN 2 WHEN 'Miércoles' THEN 3 
-         WHEN 'Jueves' THEN 4 WHEN 'Viernes' THEN 5 WHEN 'Sábado' THEN 6 WHEN 'Domingo' THEN 7 
-       END, h.hora_inicio ASC`,
+      `SELECT h.*,
+        (SELECT COUNT(*)
+         FROM reservas r
+         WHERE r.horario_id = h.id
+           AND r.fecha = (
+             CURRENT_DATE +
+             (
+               CASE h.dia
+                 WHEN 'Domingo' THEN 0
+                 WHEN 'Lunes' THEN 1
+                 WHEN 'Martes' THEN 2
+                 WHEN 'Miércoles' THEN 3
+                 WHEN 'Jueves' THEN 4
+                 WHEN 'Viernes' THEN 5
+                 WHEN 'Sábado' THEN 6
+               END - EXTRACT(DOW FROM CURRENT_DATE)::int + 7
+             ) % 7
+           )::int
+        ) as reservados,
+
+        (SELECT COUNT(*)
+         FROM reservas r
+         WHERE r.horario_id = h.id
+           AND r.fecha >= CURRENT_DATE
+        ) as reservas_activas
+
+       FROM horarios_plantilla h
+       WHERE h.lugar_id = $1
+       ORDER BY
+         CASE h.dia
+           WHEN 'Lunes' THEN 1
+           WHEN 'Martes' THEN 2
+           WHEN 'Miércoles' THEN 3
+           WHEN 'Jueves' THEN 4
+           WHEN 'Viernes' THEN 5
+           WHEN 'Sábado' THEN 6
+           WHEN 'Domingo' THEN 7
+         END,
+         h.hora_inicio ASC`,
       [lugar_id]
     );
+
     res.json(result.rows);
   } catch (err) {
+    console.error('Error al obtener horarios:', err);
     res.status(500).json({ error: 'Error al obtener horarios' });
   }
 });
@@ -184,36 +216,98 @@ router.put('/horarios/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const { hora_inicio, hora_fin, cupos, activo, dia, tipo_cancha } = req.body;
+
     if (!validarTiempoMinimo(dia, hora_inicio)) {
-      return res.status(400).json({ error: 'No puedes editar un horario con menos de 2 horas de anticipacion' });
+      return res.status(400).json({
+        error: 'No puedes editar un horario con menos de 2 horas de anticipación'
+      });
     }
+
     if (hora_fin <= hora_inicio) {
-      return res.status(400).json({ error: 'La hora de fin debe ser mayor que la hora de inicio' });
+      return res.status(400).json({
+        error: 'La hora de fin debe ser mayor que la hora de inicio'
+      });
     }
-    const actual = await pool.query('SELECT lugar_id FROM horarios_plantilla WHERE id = $1', [id]);
+
+    const actual = await pool.query(
+      `SELECT h.*,
+        (SELECT COUNT(*) FROM reservas r
+         WHERE r.horario_id = h.id
+           AND r.fecha >= CURRENT_DATE) AS reservas_activas
+       FROM horarios_plantilla h
+       WHERE h.id = $1`,
+      [id]
+    );
+
     if (actual.rows.length === 0) {
       return res.status(404).json({ error: 'Horario no encontrado' });
     }
-    const lugar_id = actual.rows[0].lugar_id;
+
+    const horarioActual = actual.rows[0];
+    const reservasActivas = Number(horarioActual.reservas_activas);
+
+    const horaActualInicio = String(horarioActual.hora_inicio).slice(0, 5);
+    const horaActualFin = String(horarioActual.hora_fin).slice(0, 5);
+    const nuevaHoraInicio = String(hora_inicio).slice(0, 5);
+    const nuevaHoraFin = String(hora_fin).slice(0, 5);
+
+    if (reservasActivas > 0) {
+      if (
+        nuevaHoraInicio !== horaActualInicio ||
+        nuevaHoraFin !== horaActualFin
+      ) {
+        return res.status(400).json({
+          error: `No puedes cambiar la hora porque este horario tiene ${reservasActivas} reserva(s) activa(s).`
+        });
+      }
+
+      if (Number(cupos) < reservasActivas) {
+        return res.status(400).json({
+          error: `No puedes reducir los cupos a ${cupos}. Ya existen ${reservasActivas} reserva(s) activa(s) para este horario.`
+        });
+      }
+    }
+
+    const lugar_id = horarioActual.lugar_id;
+
     const existe = await pool.query(
-      `SELECT id, tipo_cancha FROM horarios_plantilla 
-       WHERE lugar_id=$1 AND dia=$2 AND activo=true AND id != $3
-       AND NOT (hora_fin <= $4 OR hora_inicio >= $5)
-       AND ($6::varchar IS NULL OR tipo_cancha IS NULL OR tipo_cancha = $6)`,
+      `SELECT id, tipo_cancha
+       FROM horarios_plantilla
+       WHERE lugar_id=$1
+         AND dia=$2
+         AND activo=true
+         AND id != $3
+         AND NOT (hora_fin <= $4 OR hora_inicio >= $5)
+         AND ($6::varchar IS NULL OR tipo_cancha IS NULL OR tipo_cancha = $6)`,
       [lugar_id, dia, id, hora_inicio, hora_fin, tipo_cancha || null]
     );
+
     if (existe.rows.length > 0) {
       if (tipo_cancha && existe.rows[0].tipo_cancha === tipo_cancha) {
-        return res.status(400).json({ error: `Ya existe una cancha ${tipo_cancha} que se cruza con ese horario. Cambia la hora o el tipo de cancha.` });
+        return res.status(400).json({
+          error: `Ya existe una cancha ${tipo_cancha} que se cruza con ese horario. Cambia la hora o el tipo de cancha.`
+        });
       }
-      return res.status(400).json({ error: 'Ya existe un horario que se cruza con ese rango de horas' });
+
+      return res.status(400).json({
+        error: 'Ya existe un horario que se cruza con ese rango de horas'
+      });
     }
+
     await pool.query(
-      'UPDATE horarios_plantilla SET hora_inicio=$1, hora_fin=$2, cupos=$3, activo=$4, tipo_cancha=$5 WHERE id=$6',
+      `UPDATE horarios_plantilla
+       SET hora_inicio=$1,
+           hora_fin=$2,
+           cupos=$3,
+           activo=$4,
+           tipo_cancha=$5
+       WHERE id=$6`,
       [hora_inicio, hora_fin, cupos, activo, tipo_cancha || null, id]
     );
+
     res.json({ mensaje: 'Horario actualizado' });
   } catch (err) {
+    console.error('Error al editar horario:', err);
     res.status(500).json({ error: 'Error al editar horario' });
   }
 });

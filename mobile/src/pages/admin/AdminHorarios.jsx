@@ -51,11 +51,16 @@ const fechaLarga = fecha => {
       });
 };
 
-const CampoHora = ({ value, onChange, styles }) => (
+const CampoHora = ({ value, onChange, styles, disabled = false }) => (
   <input
-    style={styles.inputSmall}
+    style={{
+      ...styles.inputSmall,
+      opacity: disabled ? 0.6 : 1,
+      cursor: disabled ? 'not-allowed' : 'default'
+    }}
     type="time"
     value={value}
+    disabled={disabled}
     onChange={e => onChange(e.target.value)}
   />
 );
@@ -578,12 +583,26 @@ export default function AdminHorarios({
                             value={editForm.hora_inicio}
                             onChange={v => setEditForm({ ...editForm, hora_inicio: v })}
                             styles={styles}
+                            disabled={Number(h.reservas_activas) > 0}
                           />
+
                           <CampoHora
                             value={editForm.hora_fin}
                             onChange={v => setEditForm({ ...editForm, hora_fin: v })}
                             styles={styles}
+                            disabled={Number(h.reservas_activas) > 0}
                           />
+
+                          {Number(h.reservas_activas) > 0 && (
+                            <span style={{
+                              fontSize: 11,
+                              color: 'var(--color-advertencia)',
+                              fontWeight: 700
+                            }}>
+                              🔒 {h.reservas_activas} reserva(s): hora bloqueada
+                            </span>
+                          )}
+
                           <CampoCupos
                             value={editForm.cupos}
                             onChange={v => setEditForm({ ...editForm, cupos: v })}
@@ -599,22 +618,46 @@ export default function AdminHorarios({
                             />
                           )}
 
-                          <button style={styles.btnGuardarSmall} onClick={guardarEdicion}>OK</button>
-                          <button style={styles.btnCancelarSmall} onClick={() => setHorarioEditando(null)}>X</button>
+                          <button
+                            style={styles.btnGuardarSmall}
+                            onClick={guardarEdicion}
+                          >
+                            OK
+                          </button>
+
+                          <button
+                            style={styles.btnCancelarSmall}
+                            onClick={() => setHorarioEditando(null)}
+                          >
+                            X
+                          </button>
                         </>
                       ) : (
                         <>
                           <span style={styles.horarioTexto}>
                             {formatHora(h.hora_inicio)} - {formatHora(h.hora_fin)}
                           </span>
+
                           <span style={styles.cuposTexto}>
                             {lugar.categoria === 'canchas' ? '⚽' : '👥'} {h.cupos}{' '}
                             {lugar.categoria === 'canchas'
                               ? `cancha(s) ${h.tipo_cancha || ''}`
                               : 'cupos totales'}
                           </span>
-                          <button style={styles.btnEditarHorario} onClick={() => iniciarEdicion(h)}>Editar</button>
-                          <button style={styles.btnEliminarHorario} onClick={() => eliminarHorario(h.id)}>Eliminar</button>
+
+                          <button
+                            style={styles.btnEditarHorario}
+                            onClick={() => iniciarEdicion(h)}
+                          >
+                            Editar
+                          </button>
+
+                          <button
+                            style={styles.btnEliminarHorario}
+                            onClick={() => eliminarHorario(h.id)}
+                          >
+                            Eliminar
+                          </button>
                         </>
                       )}
                     </div>
