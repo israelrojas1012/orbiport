@@ -108,27 +108,45 @@ export default function DetalleLugar() {
       const [h, m] = horario.hora_inicio.split(':');
       const horaInicio = new Date(fecha);
       horaInicio.setHours(parseInt(h), parseInt(m), 0, 0);
+
       const diff = (horaInicio - ahora) / (1000 * 60 * 60);
+
       if (diff < 2) {
         mostrarToast('Solo puedes reservar con al menos 2 horas de anticipación', 'error');
         return;
       }
+
       const payload = horario.esExcepcion
         ? { usuario_id: usuario.id, excepcion_id: horario.id, fecha: fechaStr }
         : { usuario_id: usuario.id, horario_id: horario.id, fecha: fechaStr };
+
       const res = await API.post('/reservas', payload);
-      setHorarios(prev => prev.map(h2 => h2.id === horario.id ? { ...h2, reservados: (h2.reservados || 0) + 1 } : h2));
-      setExcepciones(prev => prev.map(e => e.id === horario.id ? { ...e, reservados: (e.reservados || 0) + 1 } : e));
-      setReservasHechas(prev => [...prev, {
-        ...res.data,
-        horario_id: horario.esExcepcion ? null : horario.id,
-        excepcion_id: horario.esExcepcion ? horario.id : null,
-        fecha: fechaStr,
-        hora_inicio: horario.hora_inicio,
-        hora_fin: horario.hora_fin,
-        dia: horario.dia
-      }]);
-      mostrarToast(`¡Reserva confirmada! ${formatearFecha(fecha)} ${formatHora(horario.hora_inicio)}`, 'exito');
+
+      setReservasHechas(prev => [
+        ...prev,
+        {
+          ...res.data,
+          horario_id: horario.esExcepcion ? null : horario.id,
+          excepcion_id: horario.esExcepcion ? horario.id : null,
+          fecha: fechaStr,
+          hora_inicio: horario.hora_inicio,
+          hora_fin: horario.hora_fin,
+          dia: horario.dia
+        }
+      ]);
+
+      if (horario.esExcepcion) {
+        const actualizadas = await API.get(`/lugares/excepciones/lugar/${id}`);
+        setExcepciones(actualizadas.data);
+      } else {
+        const actualizados = await API.get(`/admin/horarios/${id}`);
+        setHorarios(actualizados.data);
+      }
+
+      mostrarToast(
+        `¡Reserva confirmada! ${formatearFecha(fecha)} ${formatHora(horario.hora_inicio)}`,
+        'exito'
+      );
     } catch (err) {
       mostrarToast(err.response?.data?.error || 'Error al reservar', 'error');
     }
