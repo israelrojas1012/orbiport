@@ -32,7 +32,12 @@ const fechaProxima = dia => {
 
   const fecha = new Date(hoy);
   fecha.setDate(hoy.getDate() + diff);
-  return fecha.toISOString().split('T')[0];
+
+  const yy = fecha.getFullYear();
+  const mm = String(fecha.getMonth() + 1).padStart(2, '0');
+  const dd = String(fecha.getDate()).padStart(2, '0');
+
+  return `${yy}-${mm}-${dd}`;
 };
 
 const fechaLarga = fecha => {
