@@ -11,6 +11,9 @@ export default function Perfil() {
   const [form, setForm] = useState({ nombre: usuario.nombre || '', apellido: usuario.apellido || '' });
   const [passForm, setPassForm] = useState({ actual: '', nueva: '', confirmar: '' });
   const [editandoPass, setEditandoPass] = useState(false);
+  const [mostrarActual, setMostrarActual] = useState(false);
+  const [mostrarNueva, setMostrarNueva] = useState(false);
+  const [mostrarConfirmar, setMostrarConfirmar] = useState(false);
   const [toast, setToast] = useState(null);
   const [saldo, setSaldo] = useState(null);
   const { tema, cambiarTema } = useTheme();
@@ -249,42 +252,78 @@ export default function Perfil() {
             <div style={styles.formGroup}>
               <div style={styles.inputGroup}>
                 <label style={styles.label}>Contraseña actual</label>
-                <input
-                  style={styles.input}
-                  type="password"
-                  placeholder="••••••••"
-                  value={passForm.actual}
-                  onChange={e => setPassForm({ ...passForm, actual: e.target.value })}
-                />
+                <div style={styles.passwordWrap}>
+                  <input
+                    style={styles.passwordInput}
+                    type={mostrarActual ? 'text' : 'password'}
+                    placeholder="••••••••"
+                    value={passForm.actual}
+                    onChange={e => setPassForm({ ...passForm, actual: e.target.value })}
+                  />
+                  <button
+                    type="button"
+                    style={styles.togglePassword}
+                    onClick={() => setMostrarActual(!mostrarActual)}
+                    aria-label={mostrarActual ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                  >
+                    {mostrarActual ? '🙈' : '👁️'}
+                  </button>
+                </div>
               </div>
+
               <div style={styles.inputGroup}>
                 <label style={styles.label}>Nueva contraseña</label>
-                <input
-                  style={styles.input}
-                  type="password"
-                  placeholder="••••••••"
-                  value={passForm.nueva}
-                  onChange={e => setPassForm({ ...passForm, nueva: e.target.value })}
-                />
+                <div style={styles.passwordWrap}>
+                  <input
+                    style={styles.passwordInput}
+                    type={mostrarNueva ? 'text' : 'password'}
+                    placeholder="••••••••"
+                    value={passForm.nueva}
+                    onChange={e => setPassForm({ ...passForm, nueva: e.target.value })}
+                  />
+                  <button
+                    type="button"
+                    style={styles.togglePassword}
+                    onClick={() => setMostrarNueva(!mostrarNueva)}
+                    aria-label={mostrarNueva ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                  >
+                    {mostrarNueva ? '🙈' : '👁️'}
+                  </button>
+                </div>
               </div>
+
               <div style={styles.inputGroup}>
                 <label style={styles.label}>Confirmar nueva contraseña</label>
-                <input
-                  style={styles.input}
-                  type="password"
-                  placeholder="••••••••"
-                  value={passForm.confirmar}
-                  onChange={e => setPassForm({ ...passForm, confirmar: e.target.value })}
-                />
+                <div style={styles.passwordWrap}>
+                  <input
+                    style={styles.passwordInput}
+                    type={mostrarConfirmar ? 'text' : 'password'}
+                    placeholder="••••••••"
+                    value={passForm.confirmar}
+                    onChange={e => setPassForm({ ...passForm, confirmar: e.target.value })}
+                  />
+                  <button
+                    type="button"
+                    style={styles.togglePassword}
+                    onClick={() => setMostrarConfirmar(!mostrarConfirmar)}
+                    aria-label={mostrarConfirmar ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                  >
+                    {mostrarConfirmar ? '🙈' : '👁️'}
+                  </button>
+                </div>
                 <p style={styles.hint}>Letras y números, mínimo 6 caracteres</p>
               </div>
+
               <div style={styles.botonesRow}>
                 <button style={styles.btnGuardar} onClick={cambiarPassword}>
                   Guardar
                 </button>
                 <button
                   style={styles.btnCancelar}
-                  onClick={() => { setEditandoPass(false); setPassForm({ actual: '', nueva: '', confirmar: '' }); }}
+                  onClick={() => {
+                    setEditandoPass(false);
+                    setPassForm({ actual: '', nueva: '', confirmar: '' });
+                  }}
                 >
                   Cancelar
                 </button>
@@ -521,6 +560,38 @@ const styles = {
     color: 'var(--text-principal)',
     fontSize: 14,
     width: '100%',
+  },
+  passwordWrap: {
+    position: 'relative',
+    display: 'flex',
+    alignItems: 'center',
+  },
+  passwordInput: {
+    ...{
+      padding: '11px 14px',
+      borderRadius: 'var(--radius-sm)',
+      border: '1.5px solid var(--border-suave)',
+      background: 'var(--bg-input)',
+      color: 'var(--text-principal)',
+      fontSize: 14,
+      width: '100%',
+    },
+    paddingRight: 48,
+  },
+  togglePassword: {
+    position: 'absolute',
+    right: 10,
+    width: 32,
+    height: 32,
+    border: 'none',
+    background: 'transparent',
+    color: 'var(--text-secundario)',
+    fontSize: 17,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    cursor: 'pointer',
+    padding: 0,
   },
   hint: {
     fontSize: 11,
