@@ -34,64 +34,76 @@ router.get('/usuario/:id', async (req, res) => {
 
 router.post('/', async (req, res) => {
   const { usuario_id, horario_id, excepcion_id, fecha } = req.body;
+  const client = await pool.connect();
+
   try {
-    // Reserva sobre un horario especial (excepción)
-    if (excepcion_id) {
-      const existeExc = await pool.query(
-        'SELECT id FROM reservas WHERE usuario_id = $1 AND excepcion_id = $2 AND fecha = $3',
-        [usuario_id, excepcion_id, fecha]
-      );
-      if (existeExc.rows.length > 0) {
-        return res.status(400).json({ error: '⚠️ Ya tienes una reserva para este horario' });
-      }
+    await client.query('BEGIN');
 
-      const excepcion = await pool.query('SELECT cupos FROM horarios_excepciones WHERE id = $1', [excepcion_id]);
-      if (excepcion.rows.length === 0) {
-        return res.status(404).json({ error: 'Horario especial no encontrado' });
-      }
-      const reservadosExc = await pool.query(
-        'SELECT COUNT(*) FROM reservas WHERE excepcion_id = $1 AND fecha = $2',
-        [excepcion_id, fecha]
-      );
-      const cuposTotalExc = parseInt(excepcion.rows[0].cupos);
-      const cuposReservadosExc = parseInt(reservadosExc.rows[0].count);
-      if (cuposReservadosExc >= cuposTotalExc) {
-        return res.status(400).json({ error: '⚠️ No hay cupos disponibles' });
-      }
+    const columna = excepcion_id ? 'excepcion_id' : 'horario_id';
+    const id = excepcion_id || horario_id;
+    const tabla = excepcion_id ? 'horarios_excepciones' : 'horarios_plantilla';
 
-      const resultExc = await pool.query(
-        'INSERT INTO reservas (usuario_id, excepcion_id, fecha) VALUES ($1, $2, $3) RETURNING *',
-        [usuario_id, excepcion_id, fecha]
-      );
-      return res.status(201).json(resultExc.rows[0]);
-    }
-
-    // Reserva normal sobre un horario regular
-    const existe = await pool.query(
-      'SELECT id FROM reservas WHERE usuario_id = $1 AND horario_id = $2 AND fecha = $3',
-      [usuario_id, horario_id, fecha]
+    const existe = await client.query(
+      `SELECT id FROM reservas
+       WHERE usuario_id = $1 AND ${columna} = $2 AND fecha = $3`,
+      [usuario_id, id, fecha]
     );
+
     if (existe.rows.length > 0) {
-      return res.status(400).json({ error: '⚠️ Ya tienes una reserva para este horario' });
+      await client.query('ROLLBACK');
+      return res.status(400).json({
+        error: '⚠️ Ya tienes una reserva para este horario'
+      });
     }
-    // Contar cuantos cupos restan
-    const horario = await pool.query('SELECT cupos FROM horarios_plantilla WHERE id = $1', [horario_id]);
-    const reservados = await pool.query(
-      'SELECT COUNT(*) FROM reservas WHERE horario_id = $1 AND fecha = $2',
-      [horario_id, fecha]
+
+    const horario = await client.query(
+      `SELECT cupos FROM ${tabla} WHERE id = $1 FOR UPDATE`,
+      [id]
     );
-    const cuposTotal = parseInt(horario.rows[0].cupos);
-    const cuposReservados = parseInt(reservados.rows[0].count);
+
+    if (horario.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({
+        error: excepcion_id
+          ? 'Horario especial no encontrado'
+          : 'Horario no encontrado'
+      });
+    }
+
+    const reservados = await client.query(
+      `SELECT COUNT(*) FROM reservas
+       WHERE ${columna} = $1 AND fecha = $2`,
+      [id, fecha]
+    );
+
+    const cuposTotal = Number(horario.rows[0].cupos);
+    const cuposReservados = Number(reservados.rows[0].count);
+
     if (cuposReservados >= cuposTotal) {
-      return res.status(400).json({ error: '⚠️ No hay cupos disponibles' });
+      await client.query('ROLLBACK');
+      return res.status(400).json({
+        error: '⚠️ No hay cupos disponibles'
+      });
     }
-    const result = await pool.query(
-      'INSERT INTO reservas (usuario_id, horario_id, fecha) VALUES ($1, $2, $3) RETURNING *',
-      [usuario_id, horario_id, fecha]
+
+    const result = await client.query(
+      excepcion_id
+        ? `INSERT INTO reservas (usuario_id, excepcion_id, fecha)
+           VALUES ($1, $2, $3) RETURNING *`
+        : `INSERT INTO reservas (usuario_id, horario_id, fecha)
+           VALUES ($1, $2, $3) RETURNING *`,
+      [usuario_id, id, fecha]
     );
+
+    await client.query('COMMIT');
+
     res.status(201).json(result.rows[0]);
   } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('Error al crear reserva:', err);
     res.status(500).json({ error: 'Error al crear reserva' });
+  } finally {
+    client.release();
   }
 });
 
