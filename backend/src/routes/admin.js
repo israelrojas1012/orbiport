@@ -130,33 +130,33 @@ router.delete('/inscripciones/:id', async (req, res) => {
 router.get('/horarios/:lugar_id', async (req, res) => {
   try {
     const { lugar_id } = req.params;
+
     const result = await pool.query(
       `SELECT h.*,
-        (SELECT COUNT(*)
-         FROM reservas r
-         WHERE r.horario_id = h.id
-           AND r.fecha = (
-             CURRENT_DATE +
-             (
-               CASE h.dia
-                 WHEN 'Domingo' THEN 0
-                 WHEN 'Lunes' THEN 1
-                 WHEN 'Martes' THEN 2
-                 WHEN 'Miércoles' THEN 3
-                 WHEN 'Jueves' THEN 4
-                 WHEN 'Viernes' THEN 5
-                 WHEN 'Sábado' THEN 6
-               END - EXTRACT(DOW FROM CURRENT_DATE)::int + 7
-             ) % 7
-           )::int
-        ) as reservados,
-
-        (SELECT COUNT(*)
-         FROM reservas r
-         WHERE r.horario_id = h.id
-           AND r.fecha >= CURRENT_DATE
-        ) as reservas_activas
-
+        (
+          SELECT COUNT(*)
+          FROM reservas r
+          WHERE r.horario_id = h.id
+            AND r.fecha = CURRENT_DATE + (
+              (
+                CASE h.dia
+                  WHEN 'Domingo' THEN 0
+                  WHEN 'Lunes' THEN 1
+                  WHEN 'Martes' THEN 2
+                  WHEN 'Miércoles' THEN 3
+                  WHEN 'Jueves' THEN 4
+                  WHEN 'Viernes' THEN 5
+                  WHEN 'Sábado' THEN 6
+                END
+              ) - EXTRACT(DOW FROM CURRENT_DATE)::int + 7
+            ) % 7
+        ) AS reservados,
+        (
+          SELECT COUNT(*)
+          FROM reservas r
+          WHERE r.horario_id = h.id
+            AND r.fecha >= CURRENT_DATE
+        ) AS reservas_activas
        FROM horarios_plantilla h
        WHERE h.lugar_id = $1
        ORDER BY
@@ -203,7 +203,10 @@ router.post('/horarios', async (req, res) => {
       return res.status(400).json({ error: 'Ya existe un horario que se cruza con ese rango de horas' });
     }
     const result = await pool.query(
-      'INSERT INTO horarios_plantilla (lugar_id, dia, hora_inicio, hora_fin, cupos, tipo_cancha) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+      `INSERT INTO horarios_plantilla
+      (lugar_id, dia, hora_inicio, hora_fin, cupos, tipo_cancha, activo)
+      VALUES ($1, $2, $3, $4, $5, $6, true)
+      RETURNING *`,
       [lugar_id, dia, hora_inicio, hora_fin, cupos, tipo_cancha || null]
     );
     res.status(201).json(result.rows[0]);
@@ -371,7 +374,9 @@ router.post('/horarios/copiar', async (req, res) => {
           errores.push(`Ya existe un horario en ${dia} que se cruza con ${h.hora_inicio.slice(0,5)}-${h.hora_fin.slice(0,5)}`);
         } else {
           await pool.query(
-            'INSERT INTO horarios_plantilla (lugar_id, dia, hora_inicio, hora_fin, cupos, tipo_cancha) VALUES ($1,$2,$3,$4,$5,$6)',
+            `INSERT INTO horarios_plantilla
+            (lugar_id, dia, hora_inicio, hora_fin, cupos, tipo_cancha, activo)
+            VALUES ($1,$2,$3,$4,$5,$6,true)`,
             [lugar_id, dia, h.hora_inicio, h.hora_fin, h.cupos, h.tipo_cancha || null]
           );
           copiados.push(dia);
