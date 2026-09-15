@@ -9,8 +9,6 @@ import AdminHorarios from './admin/AdminHorarios';
 import AdminInscripciones from './admin/AdminInscripciones';
 import AdminAsistencias from './admin/AdminAsistencias';
 
-const DIAS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
-const DIAS_JS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 
 const formatHora = (hora) => {
   if (!hora) return '';
@@ -21,16 +19,6 @@ const formatHora = (hora) => {
   return `${h12}:${m} ${ampm}`;
 };
 
-const getFechaDelDia = (dia) => {
-  const hoy = new Date();
-  const diaActual = hoy.getDay();
-  const diaObjetivo = DIAS_JS.indexOf(dia);
-  let diff = diaObjetivo - diaActual;
-  if (diff < 0) diff += 7;
-  const fecha = new Date(hoy);
-  fecha.setDate(hoy.getDate() + diff);
-  return fecha.toLocaleDateString('es-EC', { day: 'numeric', month: 'short' });
-};
 
 const formatFechaLarga = (fechaStr) => {
   if (!fechaStr) return '';
@@ -51,10 +39,6 @@ export default function AdminPanel() {
     setTimeout(() => setMensaje(''), 3000);
   };
   
-  const [perfilForm, setPerfilForm] = useState({ nombre: usuario.nombre || '', apellido: usuario.apellido || '' });
-  const [editandoPerfil, setEditandoPerfil] = useState(false);
-  const [passFormAdmin, setPassFormAdmin] = useState({ actual: '', nueva: '', confirmar: '' });
-  const [editandoPassAdmin, setEditandoPassAdmin] = useState(false);
   const { tema, cambiarTema } = useTheme();
   const [modalTerminosAdmin, setModalTerminosAdmin] = useState(false);
   const [forzarTerminos, setForzarTerminos] = useState(false);
@@ -97,20 +81,6 @@ export default function AdminPanel() {
     }
   };
 
-  const obtenerFechaProxima = (dia) => {
-    const hoy = new Date();
-    const diaActual = hoy.getDay();
-    const diaObjetivo = DIAS_JS.indexOf(dia);
-    let diff = diaObjetivo - diaActual;
-    if (diff < 0) diff += 7;
-    const fecha = new Date(hoy);
-    fecha.setDate(hoy.getDate() + diff);
-    const yy = fecha.getFullYear();
-    const mm = String(fecha.getMonth() + 1).padStart(2, '0');
-    const dd = String(fecha.getDate()).padStart(2, '0');
-    return `${yy}-${mm}-${dd}`;
-  };
-
   const cambiarFechaInscritos = async (nuevaFecha) => {
     if (!modalInscritos) return;
     setFechaInscritos(nuevaFecha);
@@ -139,41 +109,6 @@ useEffect(() => {
 
   const cerrarSesion = () => { localStorage.clear(); navigate('/'); };
 
-  const guardarPerfilAdmin = async () => {
-    try {
-      await API.put(`/usuarios/${usuario.id}`, perfilForm);
-      const actualizado = { ...usuario, ...perfilForm };
-      localStorage.setItem('usuario', JSON.stringify(actualizado));
-      setEditandoPerfil(false);
-      mostrarMensaje('Perfil actualizado correctamente');
-    } catch (err) {
-      mostrarMensaje(err.response?.data?.error || 'Error al actualizar');
-    }
-  };
-
-  const cambiarPasswordAdmin = async () => {
-    if (!passFormAdmin.actual || !passFormAdmin.nueva || !passFormAdmin.confirmar) {
-      mostrarMensaje('Completa todos los campos');
-      return;
-    }
-    if (passFormAdmin.nueva !== passFormAdmin.confirmar) {
-      mostrarMensaje('Las contraseñas no coinciden');
-      return;
-    }
-    const contrasenaRegex = /^(?=.*[a-zA-Z])(?=.*[0-9]).{6,}$/;
-    if (!contrasenaRegex.test(passFormAdmin.nueva)) {
-      mostrarMensaje('La nueva contraseña debe tener letras y números, mínimo 6 caracteres');
-      return;
-    }
-    try {
-      await API.put(`/usuarios/${usuario.id}/password`, passFormAdmin);
-      setPassFormAdmin({ actual: '', nueva: '', confirmar: '' });
-      setEditandoPassAdmin(false);
-      mostrarMensaje('Contraseña actualizada correctamente');
-    } catch (err) {
-      mostrarMensaje(err.response?.data?.error || 'Error al cambiar contraseña');
-    }
-  };
 
   if (!lugar) return (
     <div style={styles.loading}>
