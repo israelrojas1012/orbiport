@@ -6,6 +6,7 @@ import TerminosModal from '../components/TerminosModal';
 import AdminPerfil from './admin/AdminPerfil';
 import AdminInfo from './admin/AdminInfo';
 import AdminHorarios from './admin/AdminHorarios';
+import AdminInscripciones from './admin/AdminInscripciones';
 
 const DIAS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
 const DIAS_JS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
@@ -42,7 +43,6 @@ export default function AdminPanel() {
   const navigate = useNavigate();
   const usuario = JSON.parse(localStorage.getItem('usuario') || '{}');
   const [lugar, setLugar] = useState(null);
-  const [inscripciones, setInscripciones] = useState([]);
   const [tab, setTab] = useState('info');
   const [mensaje, setMensaje] = useState('');
   const mostrarMensaje = (texto) => {
@@ -59,12 +59,10 @@ export default function AdminPanel() {
   const [listaAsistencia, setListaAsistencia] = useState([]);
   const [saldos, setSaldos] = useState([]);
   const [pagoForm, setPagoForm] = useState({});
-  const [busquedaInscritos, setBusquedaInscritos] = useState('');
   const [busquedaSaldos, setBusquedaSaldos] = useState('');
   const [mensajeAsistencia, setMensajeAsistencia] = useState('');
   const [horariosDelDia, setHorariosDelDia] = useState([]);
   const [horarioActivo, setHorarioActivo] = useState(null);
-  const [confirmarEliminar, setConfirmarEliminar] = useState(null);
   const [perfilForm, setPerfilForm] = useState({ nombre: usuario.nombre || '', apellido: usuario.apellido || '' });
   const [editandoPerfil, setEditandoPerfil] = useState(false);
   const [passFormAdmin, setPassFormAdmin] = useState({ actual: '', nueva: '', confirmar: '' });
@@ -145,7 +143,6 @@ useEffect(() => {
     console.log('NOMBRE DEL LUGAR:', res.data.nombre);
 
     setLugar(res.data);
-    cargarInscripciones(res.data.id);
     cargarSaldosAuto(res.data.id);
     
   }).catch(() => {});
@@ -315,22 +312,7 @@ useEffect(() => {
         </div>
       )}
 
-      {/* MODAL ELIMINAR */}
-      {confirmarEliminar && (
-        <div style={styles.modalOverlay}>
-          <div style={styles.modal}>
-            <div style={styles.modalIconWarn}>⚠</div>
-            <p style={styles.cardTitulo}>Confirmar eliminación</p>
-            <p style={styles.cardSub}>
-              ¿Estás seguro que deseas eliminar a <strong>{confirmarEliminar.nombre} {confirmarEliminar.apellido}</strong> del lugar? Esta acción no se puede deshacer.
-            </p>
-            <div style={styles.botonesRow}>
-              <button style={styles.btnPeligro} onClick={() => eliminarInscripcion(confirmarEliminar.id)}>Sí, eliminar</button>
-              <button style={styles.btnCancelar} onClick={() => setConfirmarEliminar(null)}>Cancelar</button>
-            </div>
-          </div>
-        </div>
-      )}
+
 
       {/* MODAL VER INSCRITOS */}
       {modalInscritos && (
@@ -427,92 +409,12 @@ useEffect(() => {
           </div>
         )}
 
-        {/* TAB INSCRIPCIONES */}
         {tab === 'inscripciones' && (
-          <div style={styles.tabContent}>
-            <div style={styles.searchBoxAdmin}>
-              <span style={{ fontSize: 16, opacity: 0.6 }}>🔍</span>
-              <input
-                style={styles.searchInputAdmin}
-                placeholder="Buscar por nombre, apellido o correo..."
-                value={busquedaInscritos}
-                onChange={e => setBusquedaInscritos(e.target.value)}
-              />
-              {busquedaInscritos && (
-                <button style={styles.clearBtnAdmin} onClick={() => setBusquedaInscritos('')}>✕</button>
-              )}
-            </div>
-            {(() => {
-              const filtrados = inscripciones.filter(i => {
-                if (!busquedaInscritos.trim()) return true;
-                const q = busquedaInscritos.toLowerCase();
-                return (
-                  i.nombre?.toLowerCase().includes(q) ||
-                  i.apellido?.toLowerCase().includes(q) ||
-                  i.correo?.toLowerCase().includes(q)
-                );
-              });
-              if (inscripciones.length === 0) return (
-                <div style={styles.vacio}>
-                  <div style={styles.vacioIcon}>👥</div>
-                  <p style={styles.vacioTexto}>No hay solicitudes aún</p>
-                </div>
-              );
-              if (filtrados.length === 0) return (
-                <div style={styles.vacio}>
-                  <div style={styles.vacioIcon}>🔍</div>
-                  <p style={styles.vacioTexto}>No se encontró a nadie con ese nombre</p>
-                </div>
-              );
-              return filtrados.map(i => (
-                <div key={i.id} style={styles.card}>
-                  <div style={styles.cardHeaderRow}>
-                    <div style={styles.cardIcono}>
-                      {i.nombre?.charAt(0).toUpperCase()}
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <p style={styles.cardTitulo}>{i.nombre} {i.apellido}</p>
-                      <p style={styles.cardSub}>{i.correo}</p>
-                    </div>
-                    <span style={{
-                      ...styles.badge,
-                      background:
-                        i.estado === 'aprobada' ? 'rgba(16, 185, 129, 0.1)' :
-                        i.estado === 'rechazada' ? 'rgba(239, 68, 68, 0.1)' :
-                        'rgba(245, 158, 11, 0.1)',
-                      color:
-                        i.estado === 'aprobada' ? 'var(--color-exito)' :
-                        i.estado === 'rechazada' ? 'var(--color-error)' :
-                        'var(--color-advertencia)',
-                      borderColor:
-                        i.estado === 'aprobada' ? 'rgba(16, 185, 129, 0.2)' :
-                        i.estado === 'rechazada' ? 'rgba(239, 68, 68, 0.2)' :
-                        'rgba(245, 158, 11, 0.2)',
-                    }}>
-                      {i.estado}
-                    </span>
-                  </div>
-                  {i.estado === 'pendiente' && (
-                    <div style={styles.acciones}>
-                      <button style={styles.btnAprobar} onClick={() => aprobarInscripcion(i.id)}>✓ Aprobar</button>
-                      <button style={styles.btnRechazar} onClick={() => rechazarInscripcion(i.id)}>✕ Rechazar</button>
-                    </div>
-                  )}
-                  {i.estado === 'aprobada' && (
-                    <div style={styles.acciones}>
-                      <button style={styles.btnPeligro} onClick={() => setConfirmarEliminar(i)}>Eliminar del lugar</button>
-                    </div>
-                  )}
-                  {i.estado === 'rechazada' && (
-                    <div style={styles.acciones}>
-                      <button style={styles.btnAprobar} onClick={() => aprobarInscripcion(i.id)}>✓ Aprobar</button>
-                      <button style={styles.btnPeligro} onClick={() => setConfirmarEliminar(i)}>Eliminar</button>
-                    </div>
-                  )}
-                </div>
-              ));
-            })()}
-          </div>
+          <AdminInscripciones
+            lugar={lugar}
+            mostrarMensaje={mostrarMensaje}
+            styles={styles}
+          />
         )}
 
         {/* TAB ASISTENCIA */}
