@@ -8,6 +8,8 @@ export default function Registro() {
   const [paso, setPaso] = useState(1);
   const [form, setForm] = useState({ nombre: '', apellido: '', correo: '', contrasena: '' });
   const [confirmarContrasena, setConfirmarContrasena] = useState('');
+  const [mostrarContrasena, setMostrarContrasena] = useState(false);
+  const [mostrarConfirmacion, setMostrarConfirmacion] = useState(false);
   const [token, setToken] = useState('');
   const [error, setError] = useState('');
   const [exito, setExito] = useState('');
@@ -52,9 +54,39 @@ export default function Registro() {
     setCargando(false);
   };
 
+  const campoContrasena = (
+    label,
+    value,
+    onChange,
+    visible,
+    setVisible
+  ) => (
+    <div style={styles.inputGroup}>
+      <label style={styles.label}>{label}</label>
+
+      <div style={styles.passwordWrap}>
+        <input
+          style={styles.passwordInput}
+          placeholder="••••••••"
+          type={visible ? 'text' : 'password'}
+          value={value}
+          onChange={e => onChange(e.target.value)}
+        />
+
+        <button
+          type="button"
+          style={styles.togglePassword}
+          onClick={() => setVisible(!visible)}
+          aria-label={visible ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+        >
+          {visible ? '🙈' : '👁️'}
+        </button>
+      </div>
+    </div>
+  );
+
   return (
     <div style={styles.container}>
-      {/* Modal de términos */}
       <TerminosModal
         abierto={modalTerminos}
         onCerrar={() => setModalTerminos(false)}
@@ -62,7 +94,6 @@ export default function Registro() {
         esAdmin={false}
       />
 
-      {/* Toggle de tema */}
       <button
         onClick={cambiarTema}
         style={styles.toggleTema}
@@ -72,7 +103,6 @@ export default function Registro() {
       </button>
 
       <div style={styles.card}>
-        {/* Logo y bienvenida */}
         <div style={styles.logoWrap}>
           <div style={styles.logoIcon}>B</div>
           <h1 style={styles.titulo}>Orbiport</h1>
@@ -81,26 +111,27 @@ export default function Registro() {
           </p>
         </div>
 
-        {/* Indicador de pasos */}
         <div style={styles.steps}>
           <div style={{ ...styles.step, ...(paso >= 1 ? styles.stepActivo : {}) }}>
             <div style={{ ...styles.stepCirculo, ...(paso >= 1 ? styles.stepCirculoActivo : {}) }}>1</div>
             <span style={styles.stepLabel}>Datos</span>
           </div>
-          <div style={{ ...styles.stepLinea, ...(paso >= 2 ? styles.stepLineaActiva : {}) }}></div>
+
+          <div style={{ ...styles.stepLinea, ...(paso >= 2 ? styles.stepLineaActiva : {}) }} />
+
           <div style={{ ...styles.step, ...(paso >= 2 ? styles.stepActivo : {}) }}>
             <div style={{ ...styles.stepCirculo, ...(paso >= 2 ? styles.stepCirculoActivo : {}) }}>2</div>
             <span style={styles.stepLabel}>Verificar</span>
           </div>
         </div>
 
-        {/* Mensajes */}
         {error && (
           <div style={styles.errorBox}>
             <span style={styles.errorIcon}>⚠</span>
             <span>{error}</span>
           </div>
         )}
+
         {exito && (
           <div style={styles.exitoBox}>
             <span style={styles.exitoIcon}>✓</span>
@@ -120,6 +151,7 @@ export default function Registro() {
                   onChange={e => setForm({ ...form, nombre: e.target.value })}
                 />
               </div>
+
               <div style={styles.inputGroup}>
                 <label style={styles.label}>Apellido</label>
                 <input
@@ -142,32 +174,24 @@ export default function Registro() {
               />
             </div>
 
-            <div style={styles.inputGroup}>
-              <label style={styles.label}>Contraseña</label>
-              <input
-                style={styles.input}
-                placeholder="••••••••"
-                type="password"
-                value={form.contrasena}
-                onChange={e => setForm({ ...form, contrasena: e.target.value })}
-              />
-              <p style={styles.hint}>Letras y números, mínimo 6 caracteres</p>
-            </div>
+            {campoContrasena(
+              'Contraseña',
+              form.contrasena,
+              value => setForm({ ...form, contrasena: value }),
+              mostrarContrasena,
+              setMostrarContrasena
+            )}
 
-            {/* NUEVO — confirmar contraseña */}
-            <div style={styles.inputGroup}>
-              <label style={styles.label}>Confirmar contraseña</label>
-              <input
-                style={styles.input}
-                placeholder="••••••••"
-                type="password"
-                value={confirmarContrasena}
-                onChange={e => setConfirmarContrasena(e.target.value)}
-              />
-            </div>
+            <p style={styles.hint}>Letras y números, mínimo 6 caracteres</p>
 
+            {campoContrasena(
+              'Confirmar contraseña',
+              confirmarContrasena,
+              setConfirmarContrasena,
+              mostrarConfirmacion,
+              setMostrarConfirmacion
+            )}
 
-            {/* CHECKBOX TERMINOS Y CONDICIONES */}
             <div
               style={{
                 ...styles.terminosBox,
@@ -183,11 +207,15 @@ export default function Registro() {
               }}>
                 {aceptoTerminos && <span style={styles.checkmark}>✓</span>}
               </div>
+
               <p style={styles.terminosTexto}>
                 Acepto los{' '}
                 <span
                   style={styles.terminosLink}
-                  onClick={(e) => { e.stopPropagation(); setModalTerminos(true); }}
+                  onClick={e => {
+                    e.stopPropagation();
+                    setModalTerminos(true);
+                  }}
                 >
                   términos y condiciones
                 </span>
@@ -239,18 +267,21 @@ export default function Registro() {
 
             <button
               style={styles.btnSecundario}
-              onClick={() => { setPaso(1); setError(''); setExito(''); }}
+              onClick={() => {
+                setPaso(1);
+                setError('');
+                setExito('');
+              }}
             >
               ← Volver atrás
             </button>
           </>
         )}
 
-        {/* Separador */}
         <div style={styles.separador}>
-          <div style={styles.linea}></div>
+          <div style={styles.linea} />
           <span style={styles.separadorTexto}>o</span>
-          <div style={styles.linea}></div>
+          <div style={styles.linea} />
         </div>
 
         <p style={styles.linkFooter}>
@@ -260,7 +291,6 @@ export default function Registro() {
           </Link>
         </p>
 
-        {/* Info admin */}
         <div style={styles.infoBox}>
           <span style={styles.infoIcon}>💡</span>
           <p style={styles.infoTexto}>
@@ -279,7 +309,6 @@ export default function Registro() {
             y te creamos una cuenta de administrador.
           </p>
         </div>
-
       </div>
     </div>
   );
@@ -458,6 +487,38 @@ const styles = {
     fontSize: 15,
     width: '100%',
   },
+  passwordWrap: {
+    position: 'relative',
+    display: 'flex',
+    alignItems: 'center',
+  },
+  passwordInput: {
+    ...{
+      padding: '13px 16px',
+      borderRadius: 'var(--radius-sm)',
+      border: '1.5px solid var(--border-suave)',
+      background: 'var(--bg-input)',
+      color: 'var(--text-principal)',
+      fontSize: 15,
+      width: '100%',
+    },
+    paddingRight: 48,
+  },
+  togglePassword: {
+    position: 'absolute',
+    right: 10,
+    width: 32,
+    height: 32,
+    border: 'none',
+    background: 'transparent',
+    color: 'var(--text-secundario)',
+    fontSize: 17,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    cursor: 'pointer',
+    padding: 0,
+  },
   inputCodigo: {
     padding: '20px 16px',
     borderRadius: 'var(--radius-md)',
@@ -491,9 +552,8 @@ const styles = {
   hint: {
     fontSize: 11,
     color: 'var(--text-suave)',
-    marginTop: 2,
+    marginTop: -10,
   },
-  // CHECKBOX TERMINOS
   terminosBox: {
     display: 'flex',
     alignItems: 'center',
