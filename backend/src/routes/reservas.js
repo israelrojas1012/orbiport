@@ -39,17 +39,23 @@ const validarTiempoMinimo = (fecha, hora_inicio) => {
 
   const ahora = obtenerAhoraEcuador();
 
-  const fechaStr = fecha instanceof Date
-    ? fecha.toISOString().slice(0, 10)
-    : String(fecha).slice(0, 10);
+  const fechaObj = fecha instanceof Date
+    ? fecha
+    : new Date(fecha);
 
-  const horaStr = String(hora_inicio).slice(0, 5);
+  const year = fechaObj.getUTCFullYear();
+  const month = fechaObj.getUTCMonth();
+  const day = fechaObj.getUTCDate();
 
-  const [year, month, day] = fechaStr.split('-').map(Number);
-  const [hora, minuto] = horaStr.split(':').map(Number);
+  const [hora, minuto] = String(hora_inicio)
+    .slice(0, 5)
+    .split(':')
+    .map(Number);
 
   if (
-    !year || !month || !day ||
+    Number.isNaN(year) ||
+    Number.isNaN(month) ||
+    Number.isNaN(day) ||
     Number.isNaN(hora) ||
     Number.isNaN(minuto)
   ) {
@@ -58,7 +64,7 @@ const validarTiempoMinimo = (fecha, hora_inicio) => {
 
   const fechaObjetivo = new Date(Date.UTC(
     year,
-    month - 1,
+    month,
     day,
     hora,
     minuto,
@@ -209,12 +215,6 @@ router.delete('/:id', async (req, res) => {
         error: 'No se pudo determinar la fecha y hora de la reserva'
       });
     }
-
-    console.log('🕐 VALIDANDO CANCELACIÓN:', {
-      fecha: r.fecha,
-      hora_inicio: r.hora_inicio,
-      tipo_fecha: typeof r.fecha
-    });
 
     if (!validarTiempoMinimo(r.fecha, r.hora_inicio)) {
       return res.status(400).json({
