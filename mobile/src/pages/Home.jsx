@@ -2,6 +2,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import API from '../services/api';
 import { useTheme } from '../context/ThemeContext';
+import ConfirmarSalida from '../components/ConfirmarSalida';
 
 const CATEGORIAS = ['Todos', 'gym', 'crossfit', 'canchas', 'natacion', 'yoga', 'general'];
 
@@ -15,6 +16,7 @@ export default function Home() {
   const [categoria, setCategoria] = useState('Todos');
   const [notificaciones, setNotificaciones] = useState([]);
   const [mostrarNotif, setMostrarNotif] = useState(false);
+  const [confirmarSalida, setConfirmarSalida] = useState(false);
   const { tema, cambiarTema } = useTheme();
 
   useEffect(() => {
@@ -86,6 +88,11 @@ export default function Home() {
 
   return (
     <div style={styles.container}>
+      <ConfirmarSalida
+        abierto={confirmarSalida}
+        onCancelar={() => setConfirmarSalida(false)}
+        onConfirmar={cerrarSesion}
+      />
       {/* HEADER */}
       <div style={styles.header}>
         <div>
@@ -108,8 +115,24 @@ export default function Home() {
             🔔
             {noLeidas > 0 && <span style={styles.badge}>{noLeidas}</span>}
           </button>
-          <button style={styles.btnSalir} onClick={cerrarSesion} aria-label="Salir">
-            ⏻
+          <button
+            style={styles.btnSalir}
+            onClick={() => setConfirmarSalida(true)}
+            aria-label="Cerrar sesión"
+          >
+            <svg
+              width="19"
+              height="19"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M12 3v9" />
+              <path d="M18.36 6.64a9 9 0 1 1-12.73 0" />
+            </svg>
           </button>
         </div>
       </div>
@@ -357,16 +380,16 @@ const styles = {
   btnSalir: {
     width: 42,
     height: 42,
-    background: 'rgba(239, 68, 68, 0.1)',
-    color: 'var(--color-error)',
-    border: '1px solid rgba(239, 68, 68, 0.2)',
     borderRadius: 'var(--radius-full)',
-    fontSize: 16,
-    fontWeight: 700,
+    background: 'var(--bg-hover)',
+    color: 'var(--color-error)',
+    border: '1px solid var(--border-suave)',
     cursor: 'pointer',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
+    transition: 'all 0.2s ease',
+    padding: 0,
   },
   notifPanel: {
     background: 'var(--bg-card)',

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import API from '../services/api';
 import { useTheme } from '../context/ThemeContext';
 import TerminosModal from '../components/TerminosModal';
+import ConfirmarSalida from '../components/ConfirmarSalida';
 import AdminPerfil from './admin/AdminPerfil';
 import AdminInfo from './admin/AdminInfo';
 import AdminHorarios from './admin/AdminHorarios';
@@ -49,6 +50,7 @@ export default function AdminPanel() {
   const [modalInscritos, setModalInscritos] = useState(null);
   const [personasInscritas, setPersonasInscritas] = useState([]);
   const [fechaInscritos, setFechaInscritos] = useState('');
+  const [confirmarSalida, setConfirmarSalida] = useState(false);
 
   useEffect(() => {
     if (usuario.acepto_terminos === false) {
@@ -138,6 +140,12 @@ useEffect(() => {
         onAceptar={aceptarTerminosAdmin}
         esAdmin={true}
       />
+      {/* MODAL CONFIRMAR SALIDA */}
+      <ConfirmarSalida
+        abierto={confirmarSalida}
+        onCancelar={() => setConfirmarSalida(false)}
+        onConfirmar={cerrarSesion}
+      />
 
       {/* HEADER */}
       <div style={styles.header}>
@@ -149,8 +157,24 @@ useEffect(() => {
           <button onClick={cambiarTema} style={styles.iconBtnDark} aria-label="Cambiar tema">
             {tema === 'light' ? '🌙' : '☀️'}
           </button>
-          <button style={styles.btnSalir} onClick={cerrarSesion} aria-label="Salir">
-            ⏻
+          <button
+            style={styles.btnSalir}
+            onClick={() => setConfirmarSalida(true)}
+            aria-label="Cerrar sesión"
+          >
+            <svg
+              width="19"
+              height="19"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M12 3v9" />
+              <path d="M18.36 6.64a9 9 0 1 1-12.73 0" />
+            </svg>
           </button>
         </div>
       </div>
@@ -308,5 +332,3 @@ useEffect(() => {
     </div>
   );
 }
-
-
