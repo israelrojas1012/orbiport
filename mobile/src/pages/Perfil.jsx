@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import API from '../services/api';
 import { useTheme } from '../context/ThemeContext';
+import ConfirmarSalida from '../components/ConfirmarSalida';
 
 export default function Perfil() {
   const navigate = useNavigate();
@@ -16,6 +17,7 @@ export default function Perfil() {
   const [mostrarConfirmar, setMostrarConfirmar] = useState(false);
   const [toast, setToast] = useState(null);
   const [saldo, setSaldo] = useState(null);
+  const [confirmarSalida, setConfirmarSalida] = useState(false);
   const { tema, cambiarTema } = useTheme();
 
   useEffect(() => {
@@ -70,6 +72,11 @@ export default function Perfil() {
 
   return (
     <div style={styles.container}>
+      <ConfirmarSalida
+        abierto={confirmarSalida}
+        onCancelar={() => setConfirmarSalida(false)}
+        onConfirmar={cerrarSesion}
+      />
       {toast && (
         <div style={{
           ...styles.toast,
@@ -88,13 +95,24 @@ export default function Perfil() {
           <p style={styles.headerSubtitulo}>Cuenta</p>
           <h2 style={styles.headerTitulo}>Mi Perfil</h2>
         </div>
-        <button
-          onClick={cambiarTema}
-          style={styles.iconBtn}
-          aria-label="Cambiar tema"
-        >
-          {tema === 'light' ? '🌙' : '☀️'}
-        </button>
+
+        <div style={styles.headerAcciones}>
+          <button
+            onClick={cambiarTema}
+            style={styles.iconBtn}
+            aria-label="Cambiar tema"
+          >
+            {tema === 'light' ? '🌙' : '☀️'}
+          </button>
+
+          <button
+            style={styles.btnSalirIcono}
+            onClick={() => setConfirmarSalida(true)}
+            aria-label="Cerrar sesión"
+          >
+            ⏻
+          </button>
+        </div>
       </div>
 
       <div style={styles.content}>
@@ -336,11 +354,6 @@ export default function Perfil() {
           )}
         </div>
 
-        {/* Cerrar sesión */}
-        <button style={styles.btnSalir} onClick={cerrarSesion}>
-          <span style={styles.btnSalirIcon}>⏻</span>
-          <span>Cerrar sesión</span>
-        </button>
       </div>
 
       {/* NAVBAR */}
@@ -391,6 +404,7 @@ const styles = {
     flexDirection: 'column',
     transition: 'background-color 0.3s ease',
   },
+
   toast: {
     position: 'fixed',
     top: 20,
@@ -408,9 +422,11 @@ const styles = {
     alignItems: 'center',
     gap: 8,
   },
+
   toastIcon: {
     fontSize: 16,
   },
+
   header: {
     background: 'var(--bg-card)',
     padding: '20px 24px',
@@ -422,18 +438,21 @@ const styles = {
     top: 0,
     zIndex: 10,
   },
+
   headerSubtitulo: {
     fontSize: 13,
     color: 'var(--text-secundario)',
     fontWeight: 500,
     marginBottom: 2,
   },
+
   headerTitulo: {
     fontSize: 20,
     fontWeight: 700,
     color: 'var(--text-principal)',
     letterSpacing: '-0.02em',
   },
+
   iconBtn: {
     width: 42,
     height: 42,
@@ -446,6 +465,29 @@ const styles = {
     justifyContent: 'center',
     cursor: 'pointer',
   },
+
+  headerAcciones: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+  },
+
+  btnSalirIcono: {
+    width: 42,
+    height: 42,
+    borderRadius: 'var(--radius-full)',
+    background: 'var(--bg-hover)',
+    color: 'var(--color-error)',
+    border: '1px solid var(--border-suave)',
+    fontSize: 17,
+    fontWeight: 700,
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    transition: 'all 0.2s ease',
+  },
+
   content: {
     flex: 1,
     padding: '20px 20px 100px',
@@ -454,6 +496,7 @@ const styles = {
     alignItems: 'center',
     gap: 16,
   },
+
   avatarSeccion: {
     display: 'flex',
     flexDirection: 'column',
@@ -461,6 +504,7 @@ const styles = {
     gap: 10,
     marginTop: 8,
   },
+
   avatar: {
     width: 96,
     height: 96,
@@ -471,18 +515,21 @@ const styles = {
     justifyContent: 'center',
     boxShadow: '0 10px 30px rgba(79, 70, 229, 0.35)',
   },
+
   avatarLetra: {
     fontSize: 42,
     color: '#fff',
     fontWeight: 700,
     letterSpacing: '-0.02em',
   },
+
   nombre: {
     fontSize: 22,
     fontWeight: 700,
     color: 'var(--text-principal)',
     letterSpacing: '-0.02em',
   },
+
   rolBadge: {
     display: 'flex',
     alignItems: 'center',
@@ -492,14 +539,17 @@ const styles = {
     border: '1px solid var(--color-primario-borde)',
     borderRadius: 'var(--radius-full)',
   },
+
   rolIcon: {
     fontSize: 13,
   },
+
   rolTexto: {
     fontSize: 12,
     fontWeight: 600,
     color: 'var(--color-primario)',
   },
+
   card: {
     background: 'var(--bg-card)',
     borderRadius: 'var(--radius-lg)',
@@ -512,21 +562,25 @@ const styles = {
     flexDirection: 'column',
     gap: 14,
   },
+
   cardHeader: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
   },
+
   cardTitulo: {
     fontSize: 15,
     fontWeight: 700,
     color: 'var(--text-principal)',
   },
+
   cardSubtitulo: {
     fontSize: 12,
     color: 'var(--text-suave)',
     marginTop: 2,
   },
+
   btnEditar: {
     background: 'var(--bg-hover)',
     border: '1px solid var(--border-suave)',
@@ -537,21 +591,25 @@ const styles = {
     fontWeight: 600,
     color: 'var(--text-secundario)',
   },
+
   formGroup: {
     display: 'flex',
     flexDirection: 'column',
     gap: 12,
   },
+
   inputGroup: {
     display: 'flex',
     flexDirection: 'column',
     gap: 6,
   },
+
   label: {
     fontSize: 12,
     fontWeight: 600,
     color: 'var(--text-secundario)',
   },
+
   input: {
     padding: '11px 14px',
     borderRadius: 'var(--radius-sm)',
@@ -561,23 +619,24 @@ const styles = {
     fontSize: 14,
     width: '100%',
   },
+
   passwordWrap: {
     position: 'relative',
     display: 'flex',
     alignItems: 'center',
   },
+
   passwordInput: {
-    ...{
-      padding: '11px 14px',
-      borderRadius: 'var(--radius-sm)',
-      border: '1.5px solid var(--border-suave)',
-      background: 'var(--bg-input)',
-      color: 'var(--text-principal)',
-      fontSize: 14,
-      width: '100%',
-    },
+    padding: '11px 14px',
     paddingRight: 48,
+    borderRadius: 'var(--radius-sm)',
+    border: '1.5px solid var(--border-suave)',
+    background: 'var(--bg-input)',
+    color: 'var(--text-principal)',
+    fontSize: 14,
+    width: '100%',
   },
+
   togglePassword: {
     position: 'absolute',
     right: 10,
@@ -593,17 +652,20 @@ const styles = {
     cursor: 'pointer',
     padding: 0,
   },
+
   hint: {
     fontSize: 11,
     color: 'var(--text-suave)',
     marginTop: 2,
   },
+
   infoBox: {
     background: 'var(--bg-hover)',
     borderRadius: 'var(--radius-sm)',
     padding: '11px 14px',
     border: '1px solid var(--border-suave)',
   },
+
   infoBoxLabel: {
     fontSize: 11,
     color: 'var(--text-suave)',
@@ -611,15 +673,18 @@ const styles = {
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
+
   infoBoxValor: {
     fontSize: 14,
     color: 'var(--text-secundario)',
     marginTop: 4,
   },
+
   botonesRow: {
     display: 'flex',
     gap: 8,
   },
+
   btnGuardar: {
     flex: 1,
     padding: '11px',
@@ -631,6 +696,7 @@ const styles = {
     fontWeight: 600,
     cursor: 'pointer',
   },
+
   btnCancelar: {
     flex: 1,
     padding: '11px',
@@ -642,10 +708,12 @@ const styles = {
     fontWeight: 600,
     cursor: 'pointer',
   },
+
   infoLista: {
     display: 'flex',
     flexDirection: 'column',
   },
+
   infoRow: {
     display: 'flex',
     justifyContent: 'space-between',
@@ -653,32 +721,37 @@ const styles = {
     borderBottom: '1px solid var(--border-suave)',
     padding: '11px 0',
   },
+
   infoLabel: {
     fontSize: 13,
     color: 'var(--text-secundario)',
   },
+
   infoValor: {
     fontSize: 14,
     fontWeight: 600,
     color: 'var(--text-principal)',
   },
+
   infoValorPequeno: {
     fontSize: 13,
     fontWeight: 600,
     color: 'var(--text-principal)',
   },
+
   passDisplay: {
     padding: '14px 16px',
     background: 'var(--bg-hover)',
     borderRadius: 'var(--radius-sm)',
     border: '1px solid var(--border-suave)',
   },
+
   passDots: {
     fontSize: 18,
     color: 'var(--text-suave)',
     letterSpacing: 4,
   },
-  // Saldos
+
   cardSaldo: {
     background: 'var(--bg-card)',
     borderRadius: 'var(--radius-lg)',
@@ -691,11 +764,13 @@ const styles = {
     flexDirection: 'column',
     gap: 14,
   },
+
   saldoHeader: {
     display: 'flex',
     alignItems: 'center',
     gap: 12,
   },
+
   saldoIconBox: {
     width: 44,
     height: 44,
@@ -706,20 +781,24 @@ const styles = {
     alignItems: 'center',
     justifyContent: 'center',
   },
+
   saldoIcon: {
     fontSize: 20,
   },
+
   saldoTitulo: {
     fontSize: 15,
     fontWeight: 700,
     color: 'var(--text-principal)',
   },
+
   saldoSubtitulo: {
     fontSize: 12,
     color: 'var(--color-error)',
     marginTop: 2,
     fontWeight: 500,
   },
+
   saldoResumen: {
     display: 'flex',
     alignItems: 'center',
@@ -728,15 +807,18 @@ const styles = {
     borderRadius: 'var(--radius-md)',
     padding: '14px',
   },
+
   saldoItem: {
     flex: 1,
     textAlign: 'center',
   },
+
   saldoDivider: {
     width: 1,
     height: 40,
     background: 'rgba(239, 68, 68, 0.2)',
   },
+
   saldoLabel: {
     fontSize: 11,
     color: 'var(--text-suave)',
@@ -745,22 +827,26 @@ const styles = {
     letterSpacing: 0.5,
     marginBottom: 4,
   },
+
   saldoNumero: {
     fontSize: 22,
     fontWeight: 700,
     color: 'var(--text-principal)',
   },
+
   saldoMonto: {
     fontSize: 22,
     fontWeight: 800,
     color: 'var(--color-error)',
     letterSpacing: '-0.02em',
   },
+
   saldoDetalle: {
     display: 'flex',
     flexDirection: 'column',
     gap: 8,
   },
+
   saldoDetalleTitulo: {
     fontSize: 11,
     fontWeight: 700,
@@ -769,32 +855,38 @@ const styles = {
     letterSpacing: 0.5,
     marginBottom: 4,
   },
+
   saldoLugar: {
     background: 'var(--bg-hover)',
     borderRadius: 'var(--radius-md)',
     padding: '12px 14px',
     border: '1px solid var(--border-suave)',
   },
+
   saldoLugarHeader: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
+
   saldoLugarNombre: {
     fontSize: 14,
     fontWeight: 700,
     color: 'var(--text-principal)',
   },
+
   saldoLugarMonto: {
     fontSize: 15,
     fontWeight: 800,
     color: 'var(--color-error)',
   },
+
   saldoLugarFaltas: {
     fontSize: 11,
     color: 'var(--text-suave)',
     marginTop: 4,
   },
+
   saldoLugarTelefono: {
     fontSize: 12,
     color: 'var(--color-primario)',
@@ -803,34 +895,14 @@ const styles = {
     display: 'block',
     textDecoration: 'none',
   },
+
   saldoNota: {
     fontSize: 11,
     color: 'var(--text-suave)',
     textAlign: 'center',
     fontStyle: 'italic',
   },
-  // Botón salir
-  btnSalir: {
-    background: 'rgba(239, 68, 68, 0.1)',
-    color: 'var(--color-error)',
-    border: '1px solid rgba(239, 68, 68, 0.2)',
-    borderRadius: 'var(--radius-md)',
-    padding: '14px 32px',
-    fontSize: 14,
-    fontWeight: 600,
-    cursor: 'pointer',
-    width: '100%',
-    maxWidth: 440,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    transition: 'all 0.2s ease',
-  },
-  btnSalirIcon: {
-    fontSize: 16,
-  },
-  // Navbar
+
   navbar: {
     position: 'fixed',
     bottom: 0,
@@ -844,6 +916,7 @@ const styles = {
     boxShadow: '0 -2px 12px rgba(0, 0, 0, 0.04)',
     gap: 6,
   },
+
   navBtn: {
     flex: 1,
     background: 'transparent',
@@ -859,9 +932,11 @@ const styles = {
     transition: 'all 0.2s ease',
     minHeight: 60,
   },
+
   navIcon: {
     fontSize: 20,
   },
+
   navLabel: {
     fontSize: 11,
     fontWeight: 600,
