@@ -16,6 +16,8 @@ export default function MisReservas() {
   const [confirmarSalida, setConfirmarSalida] = useState(false);
   const [notificaciones, setNotificaciones] = useState([]);
   const [mostrarNotif, setMostrarNotif] = useState(false);
+  const [mostrarMasFuturas, setMostrarMasFuturas] = useState(false);
+  const [mostrarMasPasadas, setMostrarMasPasadas] = useState(false);
   const { tema, cambiarTema } = useTheme();
 
   useEffect(() => {
@@ -60,19 +62,45 @@ export default function MisReservas() {
     }
   };
 
-  const puedeCancelar = (reserva) => {
+  const obtenerFechaHoraReserva = (reserva) => {
+    const [year, month, day] = String(reserva.fecha).slice(0, 10).split('-').map(Number);
+    const [hora, minuto] = String(reserva.hora_inicio || '00:00')
+      .slice(0, 5)
+      .split(':')
+      .map(Number);
+
+    return new Date(year, month - 1, day, hora, minuto, 0);
+  };
+
+  const esHoy = (reserva) => {
+    const fecha = obtenerFechaHoraReserva(reserva);
     const ahora = new Date();
-    const [h, m] = reserva.hora_inicio.split(':');
-    const fechaReserva = new Date(reserva.fecha);
-    fechaReserva.setHours(parseInt(h), parseInt(m), 0, 0);
-    const diff = (fechaReserva - ahora) / (1000 * 60 * 60);
+
+    return (
+      fecha.getFullYear() === ahora.getFullYear() &&
+      fecha.getMonth() === ahora.getMonth() &&
+      fecha.getDate() === ahora.getDate()
+    );
+  };
+
+  const estaPasada = (reserva) => {
+    return obtenerFechaHoraReserva(reserva) < new Date();
+  };
+
+  const puedeCancelar = (reserva) => {
+    const diff = (obtenerFechaHoraReserva(reserva) - new Date()) / (1000 * 60 * 60);
     return diff >= 2;
   };
 
   const formatearFecha = (fechaStr) => {
-    const fecha = new Date(fechaStr);
-    fecha.setDate(fecha.getDate() + 1);
-    return fecha.toLocaleDateString('es-EC', { weekday: 'long', day: 'numeric', month: 'long' });
+    const [year, month, day] = String(fechaStr).slice(0, 10).split('-').map(Number);
+    const fecha = new Date(year, month - 1, day);
+
+    return fecha.toLocaleDateString('es-EC', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long'
+    });
   };
 
   const cancelarInscripcion = async (i) => {
@@ -276,53 +304,213 @@ export default function MisReservas() {
             <div style={styles.vacio}>
               <div style={styles.vacioIcon}>📅</div>
               <p style={styles.vacioTitulo}>No tienes reservas aún</p>
-              <p style={styles.vacioTexto}>Explora los lugares disponibles y haz tu primera reserva</p>
+              <p style={styles.vacioTexto}>
+                Explora los lugares disponibles y haz tu primera reserva
+              </p>
               <button style={styles.btnExplorar} onClick={() => navigate('/home')}>
                 Explorar lugares
               </button>
             </div>
           ) : (
-            <div style={styles.lista}>
-              {reservas.map(r => {
-                const cancelable = puedeCancelar(r);
+            <div style={styles.reservasSecciones}>
+              {(() => {
+                const futuras = reservas
+                  .filter(r => !estaPasada(r))
+                  .sort((a, b) => obtenerFechaHoraReserva(a) - obtenerFechaHoraReserva(b));
+
+                const pasadas = reservas
+                  .filter(r => estaPasada(r))
+                  .sort((a, b) => obtenerFechaHoraReserva(b) - obtenerFechaHoraReserva(a));
+
+                const futurasVisibles = mostrarMasFuturas ? futuras : futuras.slice(0, 10);
+                const pasadasVisibles = mostrarMasPasadas ? pasadas : pasadas.slice(0, 10);
+
                 return (
-                  <div key={r.id} style={styles.card}>
-                    <div style={styles.cardHeader}>
-                      <div style={styles.cardIcono}>📅</div>
-                      <div style={{ flex: 1 }}>
-                        <h4 style={styles.cardTitulo}>{r.lugar_nombre}</h4>
-                        <p style={styles.cardFecha}>{formatearFecha(r.fecha)}</p>
+                  <>
+                    {/* RESERVAS FUTURAS */}
+                    <section>
+                      <div style={styles.seccionReservaHeader}>
+                        <div>
+                          <h3 style={styles.seccionReservaTitulo}>📅 Reservas futuras</h3>
+                          <p style={styles.seccionReservaSub}>
+                            {futuras.length} {futuras.length === 1 ? 'reserva' : 'reservas'}
+                          </p>
+                        </div>
                       </div>
-                      <span style={{
-                        ...styles.badge,
-                        background: r.estado === 'confirmada' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)',
-                        color: r.estado === 'confirmada' ? 'var(--color-exito)' : 'var(--color-advertencia)',
-                        borderColor: r.estado === 'confirmada' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(245, 158, 11, 0.2)',
-                      }}>
-                        {r.estado}
-                      </span>
-                    </div>
 
-                    <div style={styles.cardHora}>
-                      <span style={styles.cardHoraIcon}>🕐</span>
-                      <span style={styles.cardHoraTexto}>
-                        {r.hora_inicio?.slice(0,5)} - {r.hora_fin?.slice(0,5)}
-                      </span>
-                    </div>
+                      {futuras.length === 0 ? (
+                        <div style={styles.vacioSeccion}>
+                          <span>📭</span>
+                          <p>No tienes reservas futuras</p>
+                        </div>
+                      ) : (
+                        <>
+                          <div style={styles.lista}>
+                            {futurasVisibles.map(r => {
+                              const cancelable = puedeCancelar(r);
+                              const hoy = esHoy(r);
 
-                    {cancelable ? (
-                      <button style={styles.btnCancelar} onClick={() => cancelarReserva(r)}>
-                        Cancelar reserva
-                      </button>
-                    ) : (
-                      <div style={styles.aviso}>
-                        <span style={styles.avisoIcon}>⏰</span>
-                        <span>No se puede cancelar con menos de 2 horas de anticipación</span>
+                              return (
+                                <div
+                                  key={r.id}
+                                  style={{
+                                    ...styles.card,
+                                    borderLeft: hoy
+                                      ? '4px solid var(--color-primario)'
+                                      : '4px solid transparent',
+                                    background: hoy
+                                      ? 'var(--color-primario-suave)'
+                                      : 'var(--bg-card)',
+                                  }}
+                                >
+                                  <div style={styles.cardHeader}>
+                                    <div style={styles.cardIcono}>📅</div>
+
+                                    <div style={{ flex: 1 }}>
+                                      <h4 style={styles.cardTitulo}>{r.lugar_nombre}</h4>
+
+                                      <p style={styles.cardFecha}>
+                                        {formatearFecha(r.fecha)}
+                                        {hoy && ' · Hoy'}
+                                      </p>
+                                    </div>
+
+                                    <span style={{
+                                      ...styles.badge,
+                                      background:
+                                        r.estado === 'confirmada'
+                                          ? 'rgba(16, 185, 129, 0.1)'
+                                          : 'rgba(245, 158, 11, 0.1)',
+                                      color:
+                                        r.estado === 'confirmada'
+                                          ? 'var(--color-exito)'
+                                          : 'var(--color-advertencia)',
+                                      borderColor:
+                                        r.estado === 'confirmada'
+                                          ? 'rgba(16, 185, 129, 0.2)'
+                                          : 'rgba(245, 158, 11, 0.2)',
+                                    }}>
+                                      {r.estado}
+                                    </span>
+                                  </div>
+
+                                  <div style={styles.cardHora}>
+                                    <span style={styles.cardHoraIcon}>🕐</span>
+                                    <span style={styles.cardHoraTexto}>
+                                      {r.hora_inicio?.slice(0, 5)} - {r.hora_fin?.slice(0, 5)}
+                                    </span>
+                                  </div>
+
+                                  {cancelable ? (
+                                    <button
+                                      style={styles.btnCancelar}
+                                      onClick={() => cancelarReserva(r)}
+                                    >
+                                      Cancelar reserva
+                                    </button>
+                                  ) : (
+                                    <div style={styles.aviso}>
+                                      <span style={styles.avisoIcon}>⏰</span>
+                                      <span>
+                                        No se puede cancelar con menos de 2 horas de anticipación
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+
+                          {futuras.length > 10 && (
+                            <button
+                              style={styles.btnMostrarMas}
+                              onClick={() => setMostrarMasFuturas(!mostrarMasFuturas)}
+                            >
+                              {mostrarMasFuturas ? 'Mostrar menos' : 'Mostrar más'}
+                            </button>
+                          )}
+                        </>
+                      )}
+                    </section>
+
+                    {/* RESERVAS PASADAS */}
+                    <section>
+                      <div style={styles.seccionReservaHeader}>
+                        <div>
+                          <h3 style={styles.seccionReservaTitulo}>🕘 Reservas pasadas</h3>
+                          <p style={styles.seccionReservaSub}>
+                            {pasadas.length} {pasadas.length === 1 ? 'reserva' : 'reservas'}
+                          </p>
+                        </div>
                       </div>
-                    )}
-                  </div>
+
+                      {pasadas.length === 0 ? (
+                        <div style={styles.vacioSeccion}>
+                          <span>✅</span>
+                          <p>Aún no tienes reservas pasadas</p>
+                        </div>
+                      ) : (
+                        <>
+                          <div style={styles.lista}>
+                            {pasadasVisibles.map(r => (
+                              <div
+                                key={r.id}
+                                style={{
+                                  ...styles.card,
+                                  borderLeft: '4px solid var(--text-suave)',
+                                  opacity: 0.75,
+                                }}
+                              >
+                                <div style={styles.cardHeader}>
+                                  <div style={styles.cardIcono}>🕘</div>
+
+                                  <div style={{ flex: 1 }}>
+                                    <h4 style={styles.cardTitulo}>{r.lugar_nombre}</h4>
+
+                                    <p style={styles.cardFecha}>
+                                      {formatearFecha(r.fecha)}
+                                    </p>
+                                  </div>
+
+                                  <span style={{
+                                    ...styles.badge,
+                                    background: 'var(--bg-hover)',
+                                    color: 'var(--text-suave)',
+                                    borderColor: 'var(--border-suave)',
+                                  }}>
+                                    Finalizada
+                                  </span>
+                                </div>
+
+                                <div style={styles.cardHora}>
+                                  <span style={styles.cardHoraIcon}>🕐</span>
+                                  <span style={styles.cardHoraTexto}>
+                                    {r.hora_inicio?.slice(0, 5)} - {r.hora_fin?.slice(0, 5)}
+                                  </span>
+                                </div>
+
+                                <div style={styles.reservaPasadaAviso}>
+                                  <span>✓</span>
+                                  <span>Esta reserva ya finalizó</span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+
+                          {pasadas.length > 10 && (
+                            <button
+                              style={styles.btnMostrarMas}
+                              onClick={() => setMostrarMasPasadas(!mostrarMasPasadas)}
+                            >
+                              {mostrarMasPasadas ? 'Mostrar menos' : 'Mostrar más'}
+                            </button>
+                          )}
+                        </>
+                      )}
+                    </section>
+                  </>
                 );
-              })}
+              })()}
             </div>
           )
         )}
@@ -487,6 +675,71 @@ const styles = {
     fontWeight: 700,
     color: 'var(--text-principal)',
     letterSpacing: '-0.02em',
+  },
+  reservasSecciones: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 28,
+  },
+
+  seccionReservaHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+
+  seccionReservaTitulo: {
+    fontSize: 17,
+    fontWeight: 700,
+    color: 'var(--text-principal)',
+    margin: 0,
+  },
+
+  seccionReservaSub: {
+    fontSize: 12,
+    color: 'var(--text-suave)',
+    marginTop: 3,
+  },
+
+  vacioSeccion: {
+    background: 'var(--bg-card)',
+    border: '1px solid var(--border-suave)',
+    borderRadius: 'var(--radius-lg)',
+    padding: '24px 16px',
+    textAlign: 'center',
+    color: 'var(--text-suave)',
+    fontSize: 13,
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: 8,
+  },
+
+  btnMostrarMas: {
+    width: '100%',
+    marginTop: 12,
+    padding: '11px 16px',
+    background: 'var(--bg-card)',
+    color: 'var(--color-primario)',
+    border: '1px solid var(--color-primario-borde)',
+    borderRadius: 'var(--radius-md)',
+    fontSize: 13,
+    fontWeight: 700,
+    cursor: 'pointer',
+  },
+
+  reservaPasadaAviso: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+    padding: '10px 12px',
+    background: 'var(--bg-hover)',
+    border: '1px solid var(--border-suave)',
+    borderRadius: 'var(--radius-sm)',
+    color: 'var(--text-suave)',
+    fontSize: 12,
+    fontWeight: 600,
   },
   badge: {
     position: 'absolute',

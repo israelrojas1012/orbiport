@@ -138,7 +138,7 @@ export default function Perfil() {
           </button>
 
           <button
-            style={styles.btnSalirIcono}
+            style={styles.btnSalir}
             onClick={() => setConfirmarSalida(true)}
             aria-label="Cerrar sesión"
           >
