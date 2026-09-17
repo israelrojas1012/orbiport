@@ -1,4 +1,11 @@
-export default function ConfirmarSalida({ abierto, onCancelar, onConfirmar }) {
+export default function ConfirmarSalida({
+  abierto,
+  onCancelar,
+  onConfirmar,
+  titulo = 'Cerrar sesión',
+  texto = '¿Estás seguro de que deseas cerrar sesión?',
+  textoConfirmar = 'Cerrar sesión'
+}) {
   if (!abierto) return null;
 
   return (
@@ -15,17 +22,15 @@ export default function ConfirmarSalida({ abierto, onCancelar, onConfirmar }) {
             strokeLinecap="round"
             strokeLinejoin="round"
           >
-            <path d="M9 21h6" />
-            <path d="M12 3v9" />
-            <path d="M18.36 6.64a9 9 0 1 1-12.73 0" />
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+            <path d="M16 17l5-5-5-5" />
+            <path d="M21 12H9" />
           </svg>
         </div>
 
-        <h3 style={styles.titulo}>Cerrar sesión</h3>
+        <h3 style={styles.titulo}>{titulo}</h3>
 
-        <p style={styles.texto}>
-          ¿Estás seguro de que deseas cerrar sesión?
-        </p>
+        <p style={styles.texto}>{texto}</p>
 
         <div style={styles.botones}>
           <button
@@ -41,7 +46,7 @@ export default function ConfirmarSalida({ abierto, onCancelar, onConfirmar }) {
             style={styles.btnConfirmar}
             onClick={onConfirmar}
           >
-            Cerrar sesión
+            {textoConfirmar}
           </button>
         </div>
       </div>
@@ -61,6 +66,7 @@ const styles = {
     zIndex: 2000,
     backdropFilter: 'blur(3px)',
   },
+
   modal: {
     width: '100%',
     maxWidth: 360,
@@ -71,6 +77,7 @@ const styles = {
     boxShadow: 'var(--shadow-lg)',
     textAlign: 'center',
   },
+
   icono: {
     width: 48,
     height: 48,
@@ -83,22 +90,26 @@ const styles = {
     alignItems: 'center',
     justifyContent: 'center',
   },
+
   titulo: {
     fontSize: 17,
     fontWeight: 700,
     color: 'var(--text-principal)',
     marginBottom: 8,
   },
+
   texto: {
     fontSize: 13,
     lineHeight: 1.5,
     color: 'var(--text-secundario)',
     marginBottom: 20,
   },
+
   botones: {
     display: 'flex',
     gap: 8,
   },
+
   btnCancelar: {
     flex: 1,
     padding: '11px 10px',
@@ -110,6 +121,7 @@ const styles = {
     fontWeight: 600,
     cursor: 'pointer',
   },
+
   btnConfirmar: {
     flex: 1,
     padding: '11px 10px',

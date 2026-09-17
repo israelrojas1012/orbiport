@@ -18,6 +18,8 @@ export default function MisReservas() {
   const [mostrarNotif, setMostrarNotif] = useState(false);
   const [mostrarMasFuturas, setMostrarMasFuturas] = useState(false);
   const [mostrarMasPasadas, setMostrarMasPasadas] = useState(false);
+  const [reservaConfirmar, setReservaConfirmar] = useState(null);
+  const [inscripcionConfirmar, setInscripcionConfirmar] = useState(null);
   const { tema, cambiarTema } = useTheme();
 
   useEffect(() => {
@@ -52,7 +54,7 @@ export default function MisReservas() {
     } catch (err) {}
   };
 
-  const cancelarReserva = async (reserva) => {
+  const ejecutarCancelacionReserva = async (reserva) => {
     try {
       await API.delete(`/reservas/${reserva.id}`);
       setReservas(prev => prev.filter(r => r.id !== reserva.id));
@@ -60,6 +62,10 @@ export default function MisReservas() {
     } catch (err) {
       mostrarToast(err.response?.data?.error || 'Error al cancelar', 'error');
     }
+  };
+
+  const cancelarReserva = (reserva) => {
+    setReservaConfirmar(reserva);
   };
 
   const obtenerFechaHoraReserva = (reserva) => {
@@ -103,7 +109,7 @@ export default function MisReservas() {
     });
   };
 
-  const cancelarInscripcion = async (i) => {
+  const ejecutarCancelacionInscripcion = async (i) => {
     try {
       await API.delete(`/inscripciones/${i.id}`);
       setInscripciones(prev => prev.filter(x => x.id !== i.id));
@@ -111,6 +117,10 @@ export default function MisReservas() {
     } catch (err) {
       mostrarToast(err.response?.data?.error || 'Error al cancelar', 'error');
     }
+  };
+
+  const cancelarInscripcion = (i) => {
+    setInscripcionConfirmar(i);
   };
 
   const cerrarSesion = () => {
@@ -124,6 +134,29 @@ export default function MisReservas() {
         abierto={confirmarSalida}
         onCancelar={() => setConfirmarSalida(false)}
         onConfirmar={cerrarSesion}
+      />
+      <ConfirmarSalida
+        abierto={!!reservaConfirmar}
+        onCancelar={() => setReservaConfirmar(null)}
+        onConfirmar={() => {
+          ejecutarCancelacionReserva(reservaConfirmar);
+          setReservaConfirmar(null);
+        }}
+        titulo="Cancelar reserva"
+        texto="¿Estás seguro de que deseas cancelar esta reserva?"
+        textoConfirmar="Sí, cancelar"
+      />
+
+      <ConfirmarSalida
+        abierto={!!inscripcionConfirmar}
+        onCancelar={() => setInscripcionConfirmar(null)}
+        onConfirmar={() => {
+          ejecutarCancelacionInscripcion(inscripcionConfirmar);
+          setInscripcionConfirmar(null);
+        }}
+        titulo="Salir del lugar"
+        texto="¿Estás seguro de que deseas salir de este lugar? Tendrás que volver a inscribirte para reservar nuevamente."
+        textoConfirmar="Sí, salir"
       />
       {/* Toast */}
       {toast && (

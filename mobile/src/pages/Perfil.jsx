@@ -142,7 +142,19 @@ export default function Perfil() {
             onClick={() => setConfirmarSalida(true)}
             aria-label="Cerrar sesión"
           >
-            {/* aquí mantén el SVG de salida que ya tienes */}
+            <svg
+              width="19"
+              height="19"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M12 3v9" />
+              <path d="M18.36 6.64a9 9 0 1 1-12.73 0" />
+            </svg>
           </button>
         </div>
       </div>
