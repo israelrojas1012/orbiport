@@ -151,9 +151,11 @@ export default function Perfil() {
               strokeWidth="2"
               strokeLinecap="round"
               strokeLinejoin="round"
+              aria-hidden="true"
             >
-              <path d="M12 3v9" />
-              <path d="M18.36 6.64a9 9 0 1 1-12.73 0" />
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+              <path d="M16 17l5-5-5-5" />
+              <path d="M21 12H9" />
             </svg>
           </button>
         </div>
@@ -554,6 +556,21 @@ const styles = {
     fontWeight: 700,
     color: 'var(--text-principal)',
     letterSpacing: '-0.02em',
+  },
+
+  btnSalir: {
+    width: 42,
+    height: 42,
+    background: 'rgba(239, 68, 68, 0.1)',
+    color: 'var(--color-error)',
+    border: '1px solid rgba(239, 68, 68, 0.2)',
+    borderRadius: 'var(--radius-full)',
+    fontSize: 16,
+    fontWeight: 700,
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 
   badge: {
