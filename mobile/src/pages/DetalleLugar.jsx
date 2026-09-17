@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import API from '../services/api';
 import { useTheme } from '../context/ThemeContext';
+import ConfirmarSalida from '../components/ConfirmarSalida';
 import detalleLugarStyles from '../styles/detalleLugarStyles';
 
 const styles = detalleLugarStyles;
@@ -48,6 +49,7 @@ export default function DetalleLugar() {
   const [fotos, setFotos] = useState([]);
   const [fotoIndex, setFotoIndex] = useState(0);
   const [fotoAmpliada, setFotoAmpliada] = useState(null);
+  const [conflictoReserva, setConflictoReserva] = useState(null);
   const { tema, cambiarTema } = useTheme();
 
   useEffect(() => {
@@ -101,24 +103,44 @@ export default function DetalleLugar() {
     }
   };
 
-  const reservar = async (horario, fecha) => {
+  const reservar = async (horario, fecha, forzarConflicto = false) => {
     try {
       const fechaStr = formatearFechaLocal(fecha);
       const ahora = new Date();
       const [h, m] = horario.hora_inicio.split(':');
       const horaInicio = new Date(fecha);
-      horaInicio.setHours(parseInt(h), parseInt(m), 0, 0);
 
-      const diff = (horaInicio - ahora) / (1000 * 60 * 60);
+      horaInicio.setHours(
+        parseInt(h),
+        parseInt(m),
+        0,
+        0
+      );
+
+      const diff =
+        (horaInicio - ahora) / (1000 * 60 * 60);
 
       if (diff < 2) {
-        mostrarToast('Solo puedes reservar con al menos 2 horas de anticipación', 'error');
+        mostrarToast(
+          'Solo puedes reservar con al menos 2 horas de anticipación',
+          'error'
+        );
         return;
       }
 
       const payload = horario.esExcepcion
-        ? { usuario_id: usuario.id, excepcion_id: horario.id, fecha: fechaStr }
-        : { usuario_id: usuario.id, horario_id: horario.id, fecha: fechaStr };
+        ? {
+            usuario_id: usuario.id,
+            excepcion_id: horario.id,
+            fecha: fechaStr,
+            confirmar_conflicto: forzarConflicto
+          }
+        : {
+            usuario_id: usuario.id,
+            horario_id: horario.id,
+            fecha: fechaStr,
+            confirmar_conflicto: forzarConflicto
+          };
 
       const res = await API.post('/reservas', payload);
 
@@ -126,8 +148,12 @@ export default function DetalleLugar() {
         ...prev,
         {
           ...res.data,
-          horario_id: horario.esExcepcion ? null : horario.id,
-          excepcion_id: horario.esExcepcion ? horario.id : null,
+          horario_id: horario.esExcepcion
+            ? null
+            : horario.id,
+          excepcion_id: horario.esExcepcion
+            ? horario.id
+            : null,
           fecha: fechaStr,
           hora_inicio: horario.hora_inicio,
           hora_fin: horario.hora_fin,
@@ -136,10 +162,14 @@ export default function DetalleLugar() {
       ]);
 
       if (horario.esExcepcion) {
-        const actualizadas = await API.get(`/lugares/excepciones/lugar/${id}`);
+        const actualizadas = await API.get(
+          `/lugares/excepciones/lugar/${id}`
+        );
         setExcepciones(actualizadas.data);
       } else {
-        const actualizados = await API.get(`/admin/horarios/${id}`);
+        const actualizados = await API.get(
+          `/admin/horarios/${id}`
+        );
         setHorarios(actualizados.data);
       }
 
@@ -148,7 +178,22 @@ export default function DetalleLugar() {
         'exito'
       );
     } catch (err) {
-      mostrarToast(err.response?.data?.error || 'Error al reservar', 'error');
+      if (
+        err.response?.status === 409 &&
+        err.response?.data?.conflicto
+      ) {
+        setConflictoReserva({
+          horario,
+          fecha,
+          conflicto: err.response.data.conflicto
+        });
+        return;
+      }
+
+      mostrarToast(
+        err.response?.data?.error || 'Error al reservar',
+        'error'
+      );
     }
   };
 
@@ -308,6 +353,27 @@ export default function DetalleLugar() {
           </span>
           <span>{toast.msg}</span>
         </div>
+      )}
+
+      {conflictoReserva && (
+        <ConfirmarSalida
+          abierto={true}
+          onCancelar={() => setConflictoReserva(null)}
+          onConfirmar={() => {
+            const conflicto = conflictoReserva;
+
+            setConflictoReserva(null);
+
+            reservar(
+              conflicto.horario,
+              conflicto.fecha,
+              true
+            );
+          }}
+          titulo="Horario en conflicto"
+          texto={`Ya tienes una reserva en ${conflictoReserva.conflicto.lugar_nombre || 'otro lugar'} de ${formatHora(conflictoReserva.conflicto.hora_inicio)} a ${formatHora(conflictoReserva.conflicto.hora_fin)}. El nuevo horario es de ${formatHora(conflictoReserva.horario.hora_inicio)} a ${formatHora(conflictoReserva.horario.hora_fin)}. ¿Deseas reservar de todos modos?`}
+          textoConfirmar="Sí, reservar"
+        />
       )}
 
       {/* LIGHTBOX FOTO AMPLIADA */}

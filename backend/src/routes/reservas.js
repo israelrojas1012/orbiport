@@ -102,7 +102,14 @@ router.get('/usuario/:id', async (req, res) => {
 });
 
 router.post('/', async (req, res) => {
-  const { usuario_id, horario_id, excepcion_id, fecha } = req.body;
+  const {
+    usuario_id,
+    horario_id,
+    excepcion_id,
+    fecha,
+    confirmar_conflicto = false
+  } = req.body;
+
   const client = await pool.connect();
 
   try {
@@ -115,8 +122,11 @@ router.post('/', async (req, res) => {
       : 'horarios_plantilla';
 
     const existe = await client.query(
-      `SELECT id FROM reservas
-       WHERE usuario_id = $1 AND ${columna} = $2 AND fecha = $3`,
+      `SELECT id
+       FROM reservas
+       WHERE usuario_id = $1
+         AND ${columna} = $2
+         AND fecha = $3`,
       [usuario_id, id, fecha]
     );
 
@@ -128,7 +138,7 @@ router.post('/', async (req, res) => {
     }
 
     const horario = await client.query(
-      `SELECT cupos, hora_inicio
+      `SELECT cupos, hora_inicio, hora_fin
        FROM ${tabla}
        WHERE id = $1
        FOR UPDATE`,
@@ -144,20 +154,75 @@ router.post('/', async (req, res) => {
       });
     }
 
-    if (!validarTiempoMinimo(fecha, horario.rows[0].hora_inicio)) {
+    const {
+      cupos,
+      hora_inicio,
+      hora_fin
+    } = horario.rows[0];
+
+    if (!validarTiempoMinimo(fecha, hora_inicio)) {
       await client.query('ROLLBACK');
       return res.status(400).json({
         error: '⏰ No puedes reservar con menos de 2 horas de anticipación'
       });
     }
 
+    if (!confirmar_conflicto) {
+      const conflicto = await client.query(
+        `SELECT
+           r.id,
+           r.fecha,
+           COALESCE(h.hora_inicio, e.hora_inicio) AS hora_inicio,
+           COALESCE(h.hora_fin, e.hora_fin) AS hora_fin,
+           l.nombre AS lugar_nombre
+         FROM reservas r
+         LEFT JOIN horarios_plantilla h
+           ON r.horario_id = h.id
+         LEFT JOIN horarios_excepciones e
+           ON r.excepcion_id = e.id
+         LEFT JOIN lugares l
+           ON l.id = COALESCE(h.lugar_id, e.lugar_id)
+         WHERE r.usuario_id = $1
+           AND r.fecha = $2
+           AND (
+             r.fecha + COALESCE(h.hora_inicio, e.hora_inicio)
+           ) < (
+             $2::date + $4::time
+           )
+           AND (
+             $2::date + $3::time
+           ) < (
+             r.fecha + COALESCE(h.hora_fin, e.hora_fin)
+           )
+         ORDER BY COALESCE(h.hora_inicio, e.hora_inicio)
+         LIMIT 1`,
+        [
+          usuario_id,
+          fecha,
+          hora_inicio,
+          hora_fin
+        ]
+      );
+
+      if (conflicto.rows.length > 0) {
+        await client.query('ROLLBACK');
+
+        return res.status(409).json({
+          error: '⚠️ Tienes otra reserva que se cruza con este horario',
+          conflicto: conflicto.rows[0]
+        });
+      }
+    }
+
     const reservados = await client.query(
-      `SELECT COUNT(*) FROM reservas
-       WHERE ${columna} = $1 AND fecha = $2`,
+      `SELECT COUNT(*)
+       FROM reservas
+       WHERE ${columna} = $1
+         AND fecha = $2`,
       [id, fecha]
     );
 
-    const cuposTotal = Number(horario.rows[0].cupos);
+    const cuposTotal = Number(cupos);
     const cuposReservados = Number(reservados.rows[0].count);
 
     if (cuposReservados >= cuposTotal) {
@@ -170,9 +235,11 @@ router.post('/', async (req, res) => {
     const result = await client.query(
       excepcion_id
         ? `INSERT INTO reservas (usuario_id, excepcion_id, fecha)
-           VALUES ($1, $2, $3) RETURNING *`
+           VALUES ($1, $2, $3)
+           RETURNING *`
         : `INSERT INTO reservas (usuario_id, horario_id, fecha)
-           VALUES ($1, $2, $3) RETURNING *`,
+           VALUES ($1, $2, $3)
+           RETURNING *`,
       [usuario_id, id, fecha]
     );
 
@@ -182,7 +249,9 @@ router.post('/', async (req, res) => {
   } catch (err) {
     await client.query('ROLLBACK');
     console.error('Error al crear reserva:', err);
-    res.status(500).json({ error: 'Error al crear reserva' });
+    res.status(500).json({
+      error: 'Error al crear reserva'
+    });
   } finally {
     client.release();
   }
