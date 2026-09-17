@@ -4,6 +4,7 @@ import API from '../services/api';
 import { useTheme } from '../context/ThemeContext';
 import ConfirmarSalida from '../components/ConfirmarSalida';
 
+
 export default function MisReservas() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -13,6 +14,8 @@ export default function MisReservas() {
   const [tab, setTab] = useState('reservas');
   const [toast, setToast] = useState(null);
   const [confirmarSalida, setConfirmarSalida] = useState(false);
+  const [notificaciones, setNotificaciones] = useState([]);
+  const [mostrarNotif, setMostrarNotif] = useState(false);
   const { tema, cambiarTema } = useTheme();
 
   useEffect(() => {
@@ -20,13 +23,31 @@ export default function MisReservas() {
   }, []);
 
   const cargarDatos = () => {
-    API.get(`/reservas/usuario/${usuario.id}`).then(res => setReservas(res.data)).catch(() => {});
-    API.get(`/inscripciones/usuario/${usuario.id}`).then(res => setInscripciones(res.data)).catch(() => {});
+    API.get(`/reservas/usuario/${usuario.id}`)
+      .then(res => setReservas(res.data))
+      .catch(() => {});
+
+    API.get(`/inscripciones/usuario/${usuario.id}`)
+      .then(res => setInscripciones(res.data))
+      .catch(() => {});
+
+    API.get(`/notificaciones/${usuario.id}`)
+      .then(res => setNotificaciones(res.data))
+      .catch(() => {});
   };
 
   const mostrarToast = (msg, tipo = 'exito') => {
     setToast({ msg, tipo });
     setTimeout(() => setToast(null), 4000);
+  };
+
+  const noLeidas = notificaciones.filter(n => !n.leida).length;
+
+  const marcarTodasLeidas = async () => {
+    try {
+      await API.put(`/notificaciones/leer/todas/${usuario.id}`);
+      setNotificaciones(prev => prev.map(n => ({ ...n, leida: true })));
+    } catch (err) {}
   };
 
   const cancelarReserva = async (reserva) => {
@@ -89,74 +110,164 @@ export default function MisReservas() {
         </div>
       )}
 
-      {/* HEADER */}
-      <div style={styles.header}>
-        <div>
-          <p style={styles.headerSubtitulo}>Mis actividades</p>
-          <h2 style={styles.headerTitulo}>Reservas y lugares</h2>
-        </div>
+      {/* ZONA SUPERIOR FIJA */}
+      <div style={styles.topBar}>
 
-        <div style={styles.headerAcciones}>
-          <button
-            onClick={cambiarTema}
-            style={styles.iconBtn}
-            aria-label="Cambiar tema"
-          >
-            {tema === 'light' ? '🌙' : '☀️'}
-          </button>
+        {/* HEADER */}
+        <div style={styles.header}>
+          <div>
+            <p style={styles.headerSubtitulo}>Mis actividades</p>
+            <h2 style={styles.headerTitulo}>Reservas y lugares</h2>
+          </div>
 
-          <button
-            style={styles.btnSalir}
-            onClick={() => setConfirmarSalida(true)}
-            aria-label="Cerrar sesión"
-          >
-            <svg
-              width="19"
-              height="19"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
+          <div style={styles.headerAcciones}>
+            <button
+              onClick={cambiarTema}
+              style={styles.iconBtn}
+              aria-label="Cambiar tema"
             >
-              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-              <path d="M16 17l5-5-5-5" />
-              <path d="M21 12H9" />
-            </svg>
+              {tema === 'light' ? '🌙' : '☀️'}
+            </button>
+
+            <button
+              style={styles.iconBtn}
+              onClick={() => {
+                setMostrarNotif(!mostrarNotif);
+                if (!mostrarNotif) marcarTodasLeidas();
+              }}
+              aria-label="Notificaciones"
+            >
+              🔔
+              {noLeidas > 0 && (
+                <span style={styles.badge}>
+                  {noLeidas}
+                </span>
+              )}
+            </button>
+
+            <button
+              style={styles.btnSalir}
+              onClick={() => setConfirmarSalida(true)}
+              aria-label="Cerrar sesión"
+            >
+              <svg
+                width="19"
+                height="19"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                <path d="M16 17l5-5-5-5" />
+                <path d="M21 12H9" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        {/* NOTIFICACIONES */}
+        {mostrarNotif && (
+          <div style={styles.notifPanel}>
+            <div style={styles.notifHeader}>
+              <p style={styles.notifTitulo}>Notificaciones</p>
+
+              <button
+                style={styles.notifCerrar}
+                onClick={() => setMostrarNotif(false)}
+              >
+                ✕
+              </button>
+            </div>
+
+            {notificaciones.length === 0 ? (
+              <div style={styles.notifVacio}>
+                <p style={{ fontSize: 32 }}>🔔</p>
+                <p>No tienes notificaciones</p>
+              </div>
+            ) : (
+              <div style={styles.notifLista}>
+                {notificaciones.map(n => (
+                  <div
+                    key={n.id}
+                    style={{
+                      ...styles.notifItem,
+                      background: n.leida
+                        ? 'var(--bg-card)'
+                        : 'var(--color-primario-suave)',
+                      borderColor: n.leida
+                        ? 'var(--border-suave)'
+                        : 'var(--color-primario-borde)',
+                    }}
+                  >
+                    {!n.leida && (
+                      <div style={styles.notifPunto}></div>
+                    )}
+
+                    <div style={{ flex: 1 }}>
+                      <p style={styles.notifMensaje}>
+                        {n.mensaje}
+                      </p>
+
+                      <p style={styles.notifFecha}>
+                        {new Date(n.creado_en).toLocaleDateString(
+                          'es-EC',
+                          {
+                            day: 'numeric',
+                            month: 'long',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          }
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* TABS */}
+        <div style={styles.tabs}>
+          <button
+            style={{
+              ...styles.tab,
+              ...(tab === 'reservas' ? styles.tabActivo : {})
+            }}
+            onClick={() => setTab('reservas')}
+          >
+            <span style={styles.tabIcon}>📅</span>
+            <span>Mis Reservas</span>
+
+            {reservas.length > 0 && (
+              <span style={styles.tabBadge}>
+                {reservas.length}
+              </span>
+            )}
+          </button>
+
+          <button
+            style={{
+              ...styles.tab,
+              ...(tab === 'inscripciones' ? styles.tabActivo : {})
+            }}
+            onClick={() => setTab('inscripciones')}
+          >
+            <span style={styles.tabIcon}>🏠</span>
+            <span>Mis Lugares</span>
+
+            {inscripciones.length > 0 && (
+              <span style={styles.tabBadge}>
+                {inscripciones.length}
+              </span>
+            )}
           </button>
         </div>
-      </div>
 
-      {/* TABS */}
-      <div style={styles.tabs}>
-        <button
-          style={{
-            ...styles.tab,
-            ...(tab === 'reservas' ? styles.tabActivo : {})
-          }}
-          onClick={() => setTab('reservas')}
-        >
-          <span style={styles.tabIcon}>📅</span>
-          <span>Mis Reservas</span>
-          {reservas.length > 0 && (
-            <span style={styles.tabBadge}>{reservas.length}</span>
-          )}
-        </button>
-        <button
-          style={{
-            ...styles.tab,
-            ...(tab === 'inscripciones' ? styles.tabActivo : {})
-          }}
-          onClick={() => setTab('inscripciones')}
-        >
-          <span style={styles.tabIcon}>🏠</span>
-          <span>Mis Lugares</span>
-          {inscripciones.length > 0 && (
-            <span style={styles.tabBadge}>{inscripciones.length}</span>
-          )}
-        </button>
       </div>
 
       <div style={styles.content}>
@@ -342,6 +453,13 @@ const styles = {
   toastIcon: {
     fontSize: 16,
   },
+  topBar: {
+    position: 'sticky',
+    top: 0,
+    zIndex: 20,
+    background: 'var(--bg-card)',
+    boxShadow: 'var(--shadow-sm)',
+  },
   header: {
     background: 'var(--bg-card)',
     padding: '20px 24px',
@@ -352,6 +470,11 @@ const styles = {
     position: 'sticky',
     top: 0,
     zIndex: 10,
+  },
+  headerAcciones: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
   },
   headerSubtitulo: {
     fontSize: 13,
@@ -365,7 +488,107 @@ const styles = {
     color: 'var(--text-principal)',
     letterSpacing: '-0.02em',
   },
+  badge: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    background: 'var(--color-error)',
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: 700,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 'var(--radius-full)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: '0 5px',
+    border: '2px solid var(--bg-card)',
+  },
+  notifPanel: {
+    background: 'var(--bg-card)',
+    borderTop: '1px solid var(--border-suave)',
+    borderBottom: '1px solid var(--border-suave)',
+    padding: '16px 24px',
+    maxHeight: 400,
+    overflowY: 'auto',
+    boxShadow: 'var(--shadow-md)',
+  },
+
+  notifHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+
+  notifTitulo: {
+    fontSize: 16,
+    fontWeight: 700,
+    color: 'var(--text-principal)',
+  },
+
+  notifCerrar: {
+    width: 28,
+    height: 28,
+    borderRadius: 'var(--radius-full)',
+    background: 'var(--bg-hover)',
+    border: 'none',
+    color: 'var(--text-secundario)',
+    fontSize: 14,
+    cursor: 'pointer',
+  },
+
+  notifLista: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 8,
+  },
+
+  notifVacio: {
+    fontSize: 13,
+    color: 'var(--text-suave)',
+    textAlign: 'center',
+    padding: '24px 0',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: 8,
+  },
+
+  notifItem: {
+    padding: '12px 14px',
+    borderRadius: 'var(--radius-md)',
+    border: '1px solid',
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: 10,
+    transition: 'all 0.2s ease',
+  },
+
+  notifPunto: {
+    width: 8,
+    height: 8,
+    borderRadius: 'var(--radius-full)',
+    background: 'var(--color-primario)',
+    marginTop: 6,
+    flexShrink: 0,
+  },
+
+  notifMensaje: {
+    fontSize: 13,
+    color: 'var(--text-principal)',
+    lineHeight: 1.5,
+  },
+
+  notifFecha: {
+    fontSize: 11,
+    color: 'var(--text-suave)',
+    marginTop: 4,
+  },
+
   iconBtn: {
+    position: 'relative',
     width: 42,
     height: 42,
     borderRadius: 'var(--radius-full)',
