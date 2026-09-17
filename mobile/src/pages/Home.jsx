@@ -93,165 +93,243 @@ export default function Home() {
         onCancelar={() => setConfirmarSalida(false)}
         onConfirmar={cerrarSesion}
       />
-      {/* HEADER */}
-      <div style={styles.header}>
-        <div>
-          <p style={styles.saludo}>Hola 👋</p>
-          <h2 style={styles.nombreUsuario}>{usuario.nombre}</h2>
-        </div>
-        <div style={styles.headerAcciones}>
-          <button
-            onClick={cambiarTema}
-            style={styles.iconBtn}
-            aria-label="Cambiar tema"
-          >
-            {tema === 'light' ? '🌙' : '☀️'}
-          </button>
-          <button
-            style={styles.iconBtn}
-            onClick={() => { setMostrarNotif(!mostrarNotif); if (!mostrarNotif) marcarTodasLeidas(); }}
-            aria-label="Notificaciones"
-          >
-            🔔
-            {noLeidas > 0 && <span style={styles.badge}>{noLeidas}</span>}
-          </button>
-          <button
-            style={styles.btnSalir}
-            onClick={() => setConfirmarSalida(true)}
-            aria-label="Cerrar sesión"
-          >
-            <svg
-              width="19"
-              height="19"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
+      {/* ZONA SUPERIOR FIJA */}
+      <div style={styles.topArea}>
+
+        {/* HEADER */}
+        <div style={styles.header}>
+          <div>
+            <p style={styles.saludo}>Hola 👋</p>
+            <h2 style={styles.nombreUsuario}>{usuario.nombre}</h2>
+          </div>
+
+          <div style={styles.headerAcciones}>
+            <button
+              onClick={cambiarTema}
+              style={styles.iconBtn}
+              aria-label="Cambiar tema"
             >
-              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-              <path d="M16 17l5-5-5-5" />
-              <path d="M21 12H9" />
-            </svg>
-          </button>
+              {tema === 'light' ? '🌙' : '☀️'}
+            </button>
+
+            <button
+              style={styles.iconBtn}
+              onClick={() => {
+                setMostrarNotif(!mostrarNotif);
+                if (!mostrarNotif) marcarTodasLeidas();
+              }}
+              aria-label="Notificaciones"
+            >
+              🔔
+              {noLeidas > 0 && (
+                <span style={styles.badge}>{noLeidas}</span>
+              )}
+            </button>
+
+            <button
+              style={styles.btnSalir}
+              onClick={() => setConfirmarSalida(true)}
+              aria-label="Cerrar sesión"
+            >
+              <svg
+                width="19"
+                height="19"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                <path d="M16 17l5-5-5-5" />
+                <path d="M21 12H9" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        {/* PANEL NOTIFICACIONES */}
+        {mostrarNotif && (
+          <div style={styles.notifPanel}>
+            <div style={styles.notifHeader}>
+              <p style={styles.notifTitulo}>Notificaciones</p>
+
+              <button
+                style={styles.notifCerrar}
+                onClick={() => setMostrarNotif(false)}
+              >
+                ✕
+              </button>
+            </div>
+
+            {notificaciones.length === 0 ? (
+              <div style={styles.notifVacio}>
+                <p style={{ fontSize: 32 }}>🔔</p>
+                <p>No tienes notificaciones</p>
+              </div>
+            ) : (
+              <div style={styles.notifLista}>
+                {notificaciones.map(n => (
+                  <div
+                    key={n.id}
+                    style={{
+                      ...styles.notifItem,
+                      background: n.leida
+                        ? 'var(--bg-card)'
+                        : 'var(--color-primario-suave)',
+                      borderColor: n.leida
+                        ? 'var(--border-suave)'
+                        : 'var(--color-primario-borde)',
+                    }}
+                  >
+                    {!n.leida && <div style={styles.notifPunto}></div>}
+
+                    <div style={{ flex: 1 }}>
+                      <p style={styles.notifMensaje}>{n.mensaje}</p>
+                      <p style={styles.notifFecha}>
+                        {new Date(n.creado_en).toLocaleDateString(
+                          'es-EC',
+                          {
+                            day: 'numeric',
+                            month: 'long',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          }
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* BUSCADOR */}
+        <div style={styles.contentTop}>
+          <div style={styles.searchBox}>
+            <span style={styles.searchIcon}>🔍</span>
+
+            <input
+              style={styles.searchInput}
+              placeholder="Buscar lugares..."
+              value={busqueda}
+              onChange={e => setBusqueda(e.target.value)}
+            />
+
+            {busqueda && (
+              <button
+                style={styles.clearBtn}
+                onClick={() => setBusqueda('')}
+              >
+                ✕
+              </button>
+            )}
+          </div>
+
+          {/* CATEGORIAS */}
+          <div style={styles.categoriasScroll}>
+            {CATEGORIAS.map(cat => {
+              const activo = categoria === cat;
+
+              const label = cat === 'Todos' ? '🏠 Todos' :
+                            cat === 'gym' ? '💪 Gym' :
+                            cat === 'crossfit' ? '🏋️ Crossfit' :
+                            cat === 'canchas' ? '⚽ Canchas' :
+                            cat === 'natacion' ? '🏊 Natación' :
+                            cat === 'yoga' ? '🧘 Yoga' : '📍 General';
+
+              return (
+                <button
+                  key={cat}
+                  style={{
+                    ...styles.catBtn,
+                    background: activo
+                      ? 'var(--color-primario)'
+                      : 'var(--bg-card)',
+                    color: activo ? '#fff' : 'var(--text-secundario)',
+                    borderColor: activo
+                      ? 'var(--color-primario)'
+                      : 'var(--border-suave)',
+                  }}
+                  onClick={() => setCategoria(cat)}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* TITULO */}
+          <div style={styles.tituloRow}>
+            <h3 style={styles.titulo}>
+              {categoria === 'Todos'
+                ? 'Lugares disponibles'
+                : categoria.charAt(0).toUpperCase() + categoria.slice(1)}
+            </h3>
+
+            <span style={styles.contador}>
+              {filtrados.length} {filtrados.length === 1 ? 'lugar' : 'lugares'}
+            </span>
+          </div>
         </div>
       </div>
-
-      {/* PANEL NOTIFICACIONES */}
-      {mostrarNotif && (
-        <div style={styles.notifPanel}>
-          <div style={styles.notifHeader}>
-            <p style={styles.notifTitulo}>Notificaciones</p>
-            <button style={styles.notifCerrar} onClick={() => setMostrarNotif(false)}>✕</button>
-          </div>
-          {notificaciones.length === 0 ? (
-            <div style={styles.notifVacio}>
-              <p style={{ fontSize: 32 }}>🔔</p>
-              <p>No tienes notificaciones</p>
-            </div>
-          ) : (
-            <div style={styles.notifLista}>
-              {notificaciones.map(n => (
-                <div key={n.id} style={{
-                  ...styles.notifItem,
-                  background: n.leida ? 'var(--bg-card)' : 'var(--color-primario-suave)',
-                  borderColor: n.leida ? 'var(--border-suave)' : 'var(--color-primario-borde)'
-                }}>
-                  {!n.leida && <div style={styles.notifPunto}></div>}
-                  <div style={{ flex: 1 }}>
-                    <p style={styles.notifMensaje}>{n.mensaje}</p>
-                    <p style={styles.notifFecha}>
-                      {new Date(n.creado_en).toLocaleDateString('es-EC', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
+      
       <div style={styles.content}>
-        {/* BUSCADOR */}
-        <div style={styles.searchBox}>
-          <span style={styles.searchIcon}>🔍</span>
-          <input
-            style={styles.searchInput}
-            placeholder="Buscar lugares..."
-            value={busqueda}
-            onChange={e => setBusqueda(e.target.value)}
-          />
-          {busqueda && (
-            <button style={styles.clearBtn} onClick={() => setBusqueda('')}>✕</button>
-          )}
-        </div>
-
-        {/* FILTROS POR CATEGORIA */}
-        <div style={styles.categoriasScroll}>
-          {CATEGORIAS.map(cat => {
-            const activo = categoria === cat;
-            const label = cat === 'Todos' ? '🏠 Todos' :
-                          cat === 'gym' ? '💪 Gym' :
-                          cat === 'crossfit' ? '🏋️ Crossfit' :
-                          cat === 'canchas' ? '⚽ Canchas' :
-                          cat === 'natacion' ? '🏊 Natación' :
-                          cat === 'yoga' ? '🧘 Yoga' : '📍 General';
-            return (
-              <button
-                key={cat}
-                style={{
-                  ...styles.catBtn,
-                  background: activo ? 'var(--color-primario)' : 'var(--bg-card)',
-                  color: activo ? '#fff' : 'var(--text-secundario)',
-                  borderColor: activo ? 'var(--color-primario)' : 'var(--border-suave)',
-                }}
-                onClick={() => setCategoria(cat)}
-              >
-                {label}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* RESULTADOS */}
-        <div style={styles.tituloRow}>
-          <h3 style={styles.titulo}>
-            {categoria === 'Todos' ? 'Lugares disponibles' : categoria.charAt(0).toUpperCase() + categoria.slice(1)}
-          </h3>
-          <span style={styles.contador}>
-            {filtrados.length} {filtrados.length === 1 ? 'lugar' : 'lugares'}
-          </span>
-        </div>
-
         {filtrados.length === 0 ? (
           <div style={styles.vacio}>
             <div style={styles.vacioIcon}>🔍</div>
-            <p style={styles.vacioTexto}>No encontramos lugares con ese criterio.</p>
-            <button style={styles.btnLimpiar} onClick={() => { setBusqueda(''); setCategoria('Todos'); }}>
+            <p style={styles.vacioTexto}>
+              No encontramos lugares con ese criterio.
+            </p>
+            <button
+              style={styles.btnLimpiar}
+              onClick={() => {
+                setBusqueda('');
+                setCategoria('Todos');
+              }}
+            >
               Limpiar filtros
             </button>
           </div>
         ) : (
           <div style={styles.grid}>
             {filtrados.map(lugar => (
-              <div key={lugar.id} style={styles.card} onClick={() => navigate(`/lugar/${lugar.id}`)}>
+              <div
+                key={lugar.id}
+                style={styles.card}
+                onClick={() => navigate(`/lugar/${lugar.id}`)}
+              >
                 <div style={styles.imgWrap}>
                   <img
-                    src={lugar.foto_url || 'https://via.placeholder.com/600x300/4f46e5/ffffff?text=Orbiport'}
+                    src={
+                      lugar.foto_url ||
+                      'https://via.placeholder.com/600x300/4f46e5/ffffff?text=Orbiport'
+                    }
                     alt={lugar.nombre}
                     style={styles.img}
                   />
+
                   {lugar.categoria && lugar.categoria !== 'general' && (
-                    <span style={styles.categoriaBadge}>{lugar.categoria}</span>
+                    <span style={styles.categoriaBadge}>
+                      {lugar.categoria}
+                    </span>
                   )}
                 </div>
+
                 <div style={styles.cardBody}>
-                  <h4 style={styles.cardTitulo}>{lugar.nombre}</h4>
+                  <h4 style={styles.cardTitulo}>
+                    {lugar.nombre}
+                  </h4>
+
                   {lugar.descripcion && (
-                    <p style={styles.cardDesc}>{lugar.descripcion}</p>
+                    <p style={styles.cardDesc}>
+                      {lugar.descripcion}
+                    </p>
                   )}
+
                   <div style={styles.cardInfo}>
                     {lugar.direccion && (
                       <div style={styles.cardInfoItem}>
@@ -259,6 +337,7 @@ export default function Home() {
                         <span>{lugar.direccion}</span>
                       </div>
                     )}
+
                     {lugar.telefono && (
                       <div style={styles.cardInfoItem}>
                         <span style={styles.cardInfoIcon}>📞</span>
@@ -272,6 +351,7 @@ export default function Home() {
           </div>
         )}
       </div>
+
 
       {/* NAVBAR */}
       <div style={styles.navbar}>
@@ -314,6 +394,20 @@ export default function Home() {
 }
 
 const styles = {
+  topArea: {
+    position: 'sticky',
+    top: 0,
+    zIndex: 20,
+    background: 'var(--bg-card)',
+    boxShadow: 'var(--shadow-sm)',
+  },
+
+  contentTop: {
+    padding: '16px 24px 12px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 16,
+  },
   container: {
     minHeight: '100vh',
     background: 'var(--bg-app)',
