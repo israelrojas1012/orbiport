@@ -6,6 +6,7 @@ import { useTheme } from '../context/ThemeContext';
 export default function Login() {
   const [correo, setCorreo] = useState('');
   const [contrasena, setContrasena] = useState('');
+  const [mostrarContrasena, setMostrarContrasena] = useState(false);
   const [error, setError] = useState('');
   const [cargando, setCargando] = useState(false);
   const navigate = useNavigate();
@@ -87,15 +88,38 @@ export default function Login() {
               ¿Olvidaste tu contraseña?
             </Link>
           </div>
-          <input
-            style={styles.input}
-            placeholder="••••••••"
-            type="password"
-            value={contrasena}
-            onChange={e => setContrasena(e.target.value)}
-            onKeyDown={handleKeyDown}
-            autoComplete="current-password"
-          />
+          <div style={styles.passwordWrap}>
+            <input
+              style={styles.passwordInput}
+              placeholder="••••••••"
+              type={mostrarContrasena ? 'text' : 'password'}
+              value={contrasena}
+              onChange={e => setContrasena(e.target.value)}
+              onKeyDown={handleKeyDown}
+              autoComplete="current-password"
+            />
+
+            <button
+              type="button"
+              onClick={() => setMostrarContrasena(prev => !prev)}
+              style={styles.passwordToggle}
+              aria-label={mostrarContrasena ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+            >
+              {mostrarContrasena ? (
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M3 3l18 18" />
+                  <path d="M10.6 10.6a2 2 0 0 0 2.8 2.8" />
+                  <path d="M9.9 4.2A10.8 10.8 0 0 1 12 4c5 0 8.3 4.5 9.5 8a12.5 12.5 0 0 1-3.1 4.9" />
+                  <path d="M6.6 6.6C4.7 7.8 3.5 10 3 12c1.2 3.5 4.5 8 9 8 1.4 0 2.7-.3 3.9-.9" />
+                </svg>
+              ) : (
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" />
+                  <circle cx="12" cy="12" r="3" />
+                </svg>
+              )}
+            </button>
+          </div>
         </div>
 
         {/* Botón principal */}
@@ -237,6 +261,33 @@ const styles = {
     color: 'var(--text-principal)',
     fontSize: 15,
     width: '100%',
+  },
+  passwordWrap: {
+    position: 'relative',
+    width: '100%',
+  },
+  passwordInput: {
+    padding: '13px 48px 13px 16px',
+    borderRadius: 'var(--radius-sm)',
+    border: '1.5px solid var(--border-suave)',
+    background: 'var(--bg-input)',
+    color: 'var(--text-principal)',
+    fontSize: 15,
+    width: '100%',
+  },
+  passwordToggle: {
+    position: 'absolute',
+    right: 12,
+    top: '50%',
+    transform: 'translateY(-50%)',
+    border: 'none',
+    background: 'transparent',
+    color: 'var(--text-secundario)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 4,
+    cursor: 'pointer',
   },
   btn: {
     padding: '14px',

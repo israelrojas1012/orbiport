@@ -243,7 +243,7 @@ export default function DetalleLugar() {
 
   const cancelarSolicitud = async () => {
     try {
-      await API.delete(`/inscripciones/cancelar/${usuario.id}/${id}`);
+      await API.delete(`/inscripciones/salir/${usuario.id}/${id}`);
       setEstadoInscripcion(null);
       mostrarToast('Solicitud cancelada correctamente.', 'exito');
     } catch (err) {
@@ -428,7 +428,7 @@ export default function DetalleLugar() {
         abierto={confirmarSalida}
         onCancelar={() => setConfirmarSalida(false)}
         onConfirmar={ejecutarSalida}
-        titulo="Salir del lugar"
+        titulo="Cancelar inscripción"
         texto={`¿Estás seguro de que deseas salir de ${lugar.nombre}? Si sales, tendrás que volver a inscribirte para reservar nuevamente.`}
         textoConfirmar="Sí, salir"
       />

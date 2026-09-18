@@ -111,11 +111,29 @@ export default function MisReservas() {
 
   const ejecutarCancelacionInscripcion = async (i) => {
     try {
-      await API.delete(`/inscripciones/${i.id}`);
+      await API.delete(`/inscripciones/salir/${usuario.id}/${i.lugar_id}`);
+
       setInscripciones(prev => prev.filter(x => x.id !== i.id));
-      mostrarToast('Inscripción cancelada');
+      mostrarToast('Te has desinscrito del lugar');
     } catch (err) {
-      mostrarToast(err.response?.data?.error || 'Error al cancelar', 'error');
+      if (err.response?.status === 409) {
+        const { saldo_pendiente, reservas_futuras } = err.response.data;
+
+        setInscripcionConfirmar({
+          ...i,
+          bloqueo: {
+            saldo: Number(saldo_pendiente || 0),
+            reservas: Number(reservas_futuras || 0)
+          }
+        });
+
+        return;
+      }
+
+      mostrarToast(
+        err.response?.data?.error || 'Error al desinscribirse',
+        'error'
+      );
     }
   };
 
@@ -147,17 +165,35 @@ export default function MisReservas() {
         textoConfirmar="Sí, cancelar"
       />
 
-      <ConfirmarSalida
-        abierto={!!inscripcionConfirmar}
-        onCancelar={() => setInscripcionConfirmar(null)}
-        onConfirmar={() => {
-          ejecutarCancelacionInscripcion(inscripcionConfirmar);
-          setInscripcionConfirmar(null);
-        }}
-        titulo="Salir del lugar"
-        texto="¿Estás seguro de que deseas salir de este lugar? Tendrás que volver a inscribirte para reservar nuevamente."
-        textoConfirmar="Sí, salir"
-      />
+      {inscripcionConfirmar && !inscripcionConfirmar.bloqueo && (
+        <ConfirmarSalida
+          abierto={true}
+          onCancelar={() => setInscripcionConfirmar(null)}
+          onConfirmar={() => ejecutarCancelacionInscripcion(inscripcionConfirmar)}
+          titulo="Desinscribirme del lugar"
+          texto="¿Estás seguro de que deseas desinscribirte de este lugar? Tendrás que volver a solicitar la inscripción para reservar nuevamente."
+          textoConfirmar="Sí, desinscribirme"
+        />
+      )}
+
+      {inscripcionConfirmar?.bloqueo && (
+        <ConfirmarSalida
+          abierto={true}
+          soloAviso={true}
+          onCancelar={() => setInscripcionConfirmar(null)}
+          onConfirmar={() => setInscripcionConfirmar(null)}
+          titulo="No puedes desinscribirte todavía"
+          texto={
+            inscripcionConfirmar.bloqueo.saldo > 0 &&
+            inscripcionConfirmar.bloqueo.reservas > 0
+              ? `Tienes un saldo pendiente de $${inscripcionConfirmar.bloqueo.saldo.toFixed(2)} y ${inscripcionConfirmar.bloqueo.reservas} reservas futuras en este lugar. Debes resolver estos pendientes antes de desinscribirte.`
+              : inscripcionConfirmar.bloqueo.saldo > 0
+                ? `Tienes un saldo pendiente de $${inscripcionConfirmar.bloqueo.saldo.toFixed(2)} en este lugar. Debes cancelar la deuda antes de desinscribirte.`
+                : `Tienes ${inscripcionConfirmar.bloqueo.reservas} reservas futuras en este lugar. Debes cancelarlas antes de desinscribirte.`
+          }
+          textoConfirmar="Entendido"
+        />
+      )}
       {/* Toast */}
       {toast && (
         <div style={{
