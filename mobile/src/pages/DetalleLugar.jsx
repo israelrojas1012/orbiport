@@ -440,7 +440,13 @@ export default function DetalleLugar() {
           onCancelar={() => setSalidaBloqueada(null)}
           onConfirmar={() => setSalidaBloqueada(null)}
           titulo="No puedes salir todavía"
-          texto={obtenerMensajeSalidaBloqueada()}
+          texto={
+            salidaBloqueada.saldo > 0 && salidaBloqueada.reservas > 0
+              ? `Tienes un saldo pendiente de $${salidaBloqueada.saldo.toFixed(2)} y ${salidaBloqueada.reservas} reservas futuras en este lugar. Debes resolver estos pendientes antes de salir.`
+              : salidaBloqueada.saldo > 0
+                ? `Tienes un saldo pendiente de $${salidaBloqueada.saldo.toFixed(2)} en este lugar. Debes cancelar la deuda antes de salir.`
+                : `Tienes ${salidaBloqueada.reservas} reservas futuras en este lugar. Debes cancelarlas antes de salir.`
+          }
           textoConfirmar="Entendido"
         />
       )}
