@@ -4,7 +4,8 @@ export default function ConfirmarSalida({
   onConfirmar,
   titulo = 'Cerrar sesión',
   texto = '¿Estás seguro de que deseas cerrar sesión?',
-  textoConfirmar = 'Cerrar sesión'
+  textoConfirmar = 'Cerrar sesión',
+  soloAviso = false
 }) {
   if (!abierto) return null;
 
@@ -33,17 +34,22 @@ export default function ConfirmarSalida({
         <p style={styles.texto}>{texto}</p>
 
         <div style={styles.botones}>
-          <button
-            type="button"
-            style={styles.btnCancelar}
-            onClick={onCancelar}
-          >
-            Cancelar
-          </button>
+          {!soloAviso && (
+            <button
+              type="button"
+              style={styles.btnCancelar}
+              onClick={onCancelar}
+            >
+              Cancelar
+            </button>
+          )}
 
           <button
             type="button"
-            style={styles.btnConfirmar}
+            style={{
+              ...styles.btnConfirmar,
+              ...(soloAviso ? { flex: 1 } : {})
+            }}
             onClick={onConfirmar}
           >
             {textoConfirmar}

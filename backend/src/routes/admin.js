@@ -156,35 +156,133 @@ router.put('/inscripciones/:id', async (req, res) => {
 });
 
 router.delete('/inscripciones/:id', async (req, res) => {
+  const { id } = req.params;
+  const { confirmar_eliminacion = false } = req.body;
+  const client = await pool.connect();
+
   try {
-    const { id } = req.params;
+    await client.query('BEGIN');
 
-    // Obtener datos antes de eliminar
-    const inscripcion = await pool.query(`
-      SELECT i.usuario_id, l.nombre AS lugar_nombre
-      FROM inscripciones i
-      JOIN lugares l ON i.lugar_id = l.id
-      WHERE i.id = $1
-    `, [id]);
-
-    if (inscripcion.rows.length === 0) {
-      return res.status(404).json({ error: 'Inscripcion no encontrada' });
-    }
-
-    const { usuario_id, lugar_nombre } = inscripcion.rows[0];
-
-    // Eliminar inscripcion
-    await pool.query('DELETE FROM inscripciones WHERE id = $1', [id]);
-
-    // Enviar notificacion al usuario
-    await pool.query(
-      'INSERT INTO notificaciones (usuario_id, mensaje) VALUES ($1, $2)',
-      [usuario_id, `Has sido eliminado del establecimiento "${lugar_nombre}". Si crees que es un error contacta al administrador.`]
+    const inscripcion = await client.query(
+      `SELECT i.id,
+              i.usuario_id,
+              i.lugar_id,
+              u.nombre,
+              u.apellido,
+              l.nombre AS lugar_nombre
+       FROM inscripciones i
+       JOIN usuarios u ON i.usuario_id = u.id
+       JOIN lugares l ON i.lugar_id = l.id
+       WHERE i.id = $1`,
+      [id]
     );
 
-    res.json({ mensaje: 'Inscripcion eliminada' });
+    if (inscripcion.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({
+        error: 'Inscripcion no encontrada'
+      });
+    }
+
+    const i = inscripcion.rows[0];
+
+    const saldo = await client.query(
+      `SELECT COALESCE(
+         SUM(GREATEST(monto - pagado, 0)),
+         0
+       ) AS saldo_pendiente
+       FROM penalizaciones
+       WHERE usuario_id = $1
+         AND lugar_id = $2
+         AND estado != 'pagado'`,
+      [i.usuario_id, i.lugar_id]
+    );
+
+    const reservas = await client.query(
+      `SELECT COUNT(*) AS total
+       FROM reservas r
+       LEFT JOIN horarios_plantilla h
+         ON r.horario_id = h.id
+       LEFT JOIN horarios_excepciones e
+         ON r.excepcion_id = e.id
+       WHERE r.usuario_id = $1
+         AND COALESCE(h.lugar_id, e.lugar_id) = $2
+         AND (
+           r.fecha::date > (NOW() AT TIME ZONE 'America/Guayaquil')::date
+           OR (
+             r.fecha::date = (NOW() AT TIME ZONE 'America/Guayaquil')::date
+             AND COALESCE(h.hora_inicio, e.hora_inicio)
+                 > (NOW() AT TIME ZONE 'America/Guayaquil')::time
+           )
+         )`,
+      [i.usuario_id, i.lugar_id]
+    );
+
+    const saldoPendiente = Number(saldo.rows[0].saldo_pendiente);
+    const reservasFuturas = Number(reservas.rows[0].total);
+
+    if (
+      !confirmar_eliminacion &&
+      (saldoPendiente > 0 || reservasFuturas > 0)
+    ) {
+      await client.query('ROLLBACK');
+
+      return res.status(409).json({
+        advertencia: {
+          nombre: `${i.nombre} ${i.apellido}`,
+          lugar_nombre: i.lugar_nombre,
+          saldo_pendiente: saldoPendiente,
+          reservas_futuras: reservasFuturas
+        }
+      });
+    }
+
+    if (confirmar_eliminacion && reservasFuturas > 0) {
+      await client.query(
+        `DELETE FROM reservas
+         WHERE id IN (
+           SELECT r.id
+           FROM reservas r
+           LEFT JOIN horarios_plantilla h
+             ON r.horario_id = h.id
+           LEFT JOIN horarios_excepciones e
+             ON r.excepcion_id = e.id
+           WHERE r.usuario_id = $1
+             AND COALESCE(h.lugar_id, e.lugar_id) = $2
+             AND (
+               r.fecha::date > (NOW() AT TIME ZONE 'America/Guayaquil')::date
+               OR (
+                 r.fecha::date = (NOW() AT TIME ZONE 'America/Guayaquil')::date
+                 AND COALESCE(h.hora_inicio, e.hora_inicio)
+                     > (NOW() AT TIME ZONE 'America/Guayaquil')::time
+               )
+             )
+         )`,
+        [i.usuario_id, i.lugar_id]
+      );
+    }
+
+    await client.query(
+      'DELETE FROM inscripciones WHERE id = $1',
+      [id]
+    );
+
+    await client.query('COMMIT');
+
+    res.json({
+      mensaje: 'Inscripcion eliminada',
+      reservas_canceladas: reservasFuturas,
+      saldo_pendiente: saldoPendiente
+    });
   } catch (err) {
-    res.status(500).json({ error: 'Error al eliminar inscripcion' });
+    await client.query('ROLLBACK');
+    console.error('Error al eliminar inscripcion:', err);
+
+    res.status(500).json({
+      error: 'Error al eliminar inscripcion'
+    });
+  } finally {
+    client.release();
   }
 });
 

@@ -32,14 +32,40 @@ const AdminInscripciones = ({ lugar, mostrarMensaje, styles }) => {
     }
   };
 
-  const eliminarInscripcion = async (id) => {
+  const eliminarInscripcion = async (id, confirmar = false) => {
     try {
-      await API.delete(`/admin/inscripciones/${id}`);
-      setInscripciones(prev => prev.filter(i => i.id !== id));
+      await API.delete(`/admin/inscripciones/${id}`, {
+        data: {
+          confirmar_eliminacion: confirmar
+        }
+      });
+
+      setInscripciones(prev =>
+        prev.filter(x => x.id !== id)
+      );
+
       setConfirmarEliminar(null);
-      mostrarMensaje('Inscripción eliminada');
+
+      mostrarMensaje(
+        confirmar
+          ? 'Usuario eliminado y reservas futuras canceladas'
+          : 'Inscripción eliminada'
+      );
     } catch (err) {
-      mostrarMensaje('Error al eliminar');
+      if (
+        err.response?.status === 409 &&
+        err.response?.data?.advertencia
+      ) {
+        setConfirmarEliminar({
+          ...confirmarEliminar,
+          advertencia: err.response.data.advertencia
+        });
+        return;
+      }
+
+      mostrarMensaje(
+        err.response?.data?.error || 'Error al eliminar'
+      );
     }
   };
 
@@ -63,17 +89,50 @@ const AdminInscripciones = ({ lugar, mostrarMensaje, styles }) => {
             <p style={styles.cardTitulo}>Confirmar eliminación</p>
 
             <p style={styles.cardSub}>
-              ¿Estás seguro que deseas eliminar a{' '}
-              <strong>
-                {confirmarEliminar.nombre} {confirmarEliminar.apellido}
-              </strong>{' '}
-              del lugar? Esta acción no se puede deshacer.
+              {confirmarEliminar.advertencia ? (
+                <>
+                  <strong>
+                    Este usuario tiene un saldo pendiente de $
+                    {Number(
+                      confirmarEliminar.advertencia.saldo_pendiente
+                    ).toFixed(2)}
+                    {' '}y{' '}
+                    {confirmarEliminar.advertencia.reservas_futuras}
+                    {' '}
+                    reserva
+                    {confirmarEliminar.advertencia.reservas_futuras !== 1 ? 's' : ''}
+                    {' '}futura
+                    {confirmarEliminar.advertencia.reservas_futuras !== 1 ? 's' : ''}.
+                  </strong>
+
+                  <br /><br />
+
+                  Si lo eliminas, las reservas futuras se cancelarán
+                  automáticamente, pero el saldo pendiente
+                  <strong> no se eliminará</strong>. Permanecerá registrado
+                  hasta que el administrador registre el pago y confirme
+                  que la deuda fue saldada.
+                </>
+              ) : (
+                <>
+                  ¿Estás seguro que deseas eliminar a{' '}
+                  <strong>
+                    {confirmarEliminar.nombre} {confirmarEliminar.apellido}
+                  </strong>
+                  {' '}del lugar? Esta acción no se puede deshacer.
+                </>
+              )}
             </p>
 
             <div style={styles.botonesRow}>
               <button
                 style={styles.btnPeligro}
-                onClick={() => eliminarInscripcion(confirmarEliminar.id)}
+                onClick={() =>
+                  eliminarInscripcion(
+                    confirmarEliminar.id,
+                    !!confirmarEliminar.advertencia
+                  )
+                }
               >
                 Sí, eliminar
               </button>

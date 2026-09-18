@@ -50,6 +50,8 @@ export default function DetalleLugar() {
   const [fotoIndex, setFotoIndex] = useState(0);
   const [fotoAmpliada, setFotoAmpliada] = useState(null);
   const [conflictoReserva, setConflictoReserva] = useState(null);
+  const [confirmarSalida, setConfirmarSalida] = useState(false);
+  const [salidaBloqueada, setSalidaBloqueada] = useState(null);
   const { tema, cambiarTema } = useTheme();
 
   useEffect(() => {
@@ -274,12 +276,79 @@ export default function DetalleLugar() {
     return excepciones.filter(e => String(e.fecha).slice(0, 10) === fechaStr);
   };
 
+  const solicitarSalida = () => {
+    setConfirmarSalida(true);
+  };
+
+  const ejecutarSalida = async () => {
+    try {
+      await API.delete(
+        `/inscripciones/salir/${usuario.id}/${id}`
+      );
+
+      setConfirmarSalida(false);
+      setEstadoInscripcion(null);
+
+      mostrarToast(
+        'Has salido del lugar correctamente',
+        'exito'
+      );
+
+      setTimeout(() => navigate('/home'), 800);
+    } catch (err) {
+      setConfirmarSalida(false);
+
+      if (err.response?.status === 409) {
+        setSalidaBloqueada({
+          saldo: Number(err.response.data.saldo_pendiente || 0),
+          reservas: Number(err.response.data.reservas_futuras || 0)
+        });
+        return;
+      }
+
+      mostrarToast(
+        err.response?.data?.error || 'Error al salir del lugar',
+        'error'
+      );
+    }
+  };
+
+  const obtenerMensajeSalidaBloqueada = () => {
+    const saldo = salidaBloqueada?.saldo || 0;
+    const reservas = salidaBloqueada?.reservas || 0;
+
+    if (saldo > 0 && reservas > 0) {
+      return `Tienes un saldo pendiente de $${saldo.toFixed(2)} y ${reservas} reserva${reservas !== 1 ? 's' : ''} futura${reservas !== 1 ? 's' : ''} en este lugar. Antes de salir, paga el saldo y cancela tus reservas.`;
+    }
+
+    if (saldo > 0) {
+      return `Tienes un saldo pendiente de $${saldo.toFixed(2)} en este lugar. Antes de salir, debes cancelar la deuda con el administrador.`;
+    }
+
+    return `Tienes ${reservas} reserva${reservas !== 1 ? 's' : ''} futura${reservas !== 1 ? 's' : ''} en este lugar. Antes de salir, debes cancelarlas.`;
+  };
+
   const renderBotonInscripcion = () => {
     if (estadoInscripcion === 'aprobada') {
       return (
-        <div style={styles.inscritoBadge}>
-          <span style={styles.badgeIcon}>✓</span>
-          <span>Ya estás inscrito en este lugar</span>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div style={styles.inscritoBadge}>
+            <span style={styles.badgeIcon}>✓</span>
+            <span>Ya estás inscrito en este lugar</span>
+          </div>
+
+          <button
+            style={{
+              ...styles.pendienteBadge,
+              background: 'rgba(239, 68, 68, 0.1)',
+              color: 'var(--color-error)',
+              border: '1px solid rgba(239, 68, 68, 0.2)',
+              cursor: 'pointer',
+            }}
+            onClick={solicitarSalida}
+          >
+            <span>Salir del lugar</span>
+          </button>
         </div>
       );
     }
@@ -353,6 +422,27 @@ export default function DetalleLugar() {
           </span>
           <span>{toast.msg}</span>
         </div>
+      )}
+
+      <ConfirmarSalida
+        abierto={confirmarSalida}
+        onCancelar={() => setConfirmarSalida(false)}
+        onConfirmar={ejecutarSalida}
+        titulo="Salir del lugar"
+        texto={`¿Estás seguro de que deseas salir de ${lugar.nombre}? Si sales, tendrás que volver a inscribirte para reservar nuevamente.`}
+        textoConfirmar="Sí, salir"
+      />
+
+      {salidaBloqueada && (
+        <ConfirmarSalida
+          abierto={true}
+          soloAviso={true}
+          onCancelar={() => setSalidaBloqueada(null)}
+          onConfirmar={() => setSalidaBloqueada(null)}
+          titulo="No puedes salir todavía"
+          texto={obtenerMensajeSalidaBloqueada()}
+          textoConfirmar="Entendido"
+        />
       )}
 
       {conflictoReserva && (
