@@ -111,9 +111,20 @@ export default function MisReservas() {
 
   const ejecutarCancelacionInscripcion = async (i) => {
     try {
-      await API.delete(`/inscripciones/salir/${usuario.id}/${i.lugar_id}`);
+      if (i.estado === 'pendiente') {
+        await API.delete(`/inscripciones/cancelar/${usuario.id}/${i.lugar_id}`);
+        setInscripciones(prev => prev.filter(x => x.id !== i.id));
+        setInscripcionConfirmar(null);
+        mostrarToast('Solicitud cancelada correctamente.');
+        return;
+      }
+
+      const res = await API.delete(`/inscripciones/salir/${usuario.id}/${i.lugar_id}`);
+
       setInscripciones(prev => prev.filter(x => x.id !== i.id));
-      mostrarToast('Inscripción cancelada');
+      setInscripcionConfirmar(null);
+
+      mostrarToast(res.data?.mensaje || 'Inscripción cancelada');
     } catch (err) {
       if (err.response?.status === 409) {
         const { saldo_pendiente, reservas_futuras } = err.response.data;
@@ -165,9 +176,17 @@ export default function MisReservas() {
           abierto={true}
           onCancelar={() => setInscripcionConfirmar(null)}
           onConfirmar={() => ejecutarCancelacionInscripcion(inscripcionConfirmar)}
-          titulo="Desinscribirme del lugar"
-          texto="¿Estás seguro de que deseas desinscribirte de este lugar? Tendrás que volver a solicitar la inscripción para reservar nuevamente."
-          textoConfirmar="Sí, desinscribirme"
+          titulo={
+            inscripcionConfirmar.estado === 'pendiente'
+              ? 'Cancelar solicitud'
+              : 'Cancelar inscripción'
+          }
+          texto={
+            inscripcionConfirmar.estado === 'pendiente'
+              ? '¿Estás seguro de que deseas cancelar tu solicitud de inscripción a este lugar?'
+              : '¿Estás seguro de que deseas cancelar tu inscripción a este lugar? Tendrás que volver a solicitarla para reservar nuevamente.'
+          }
+          textoConfirmar="Sí, cancelar"
         />
       )}
 
@@ -177,14 +196,14 @@ export default function MisReservas() {
           soloAviso={true}
           onCancelar={() => setInscripcionConfirmar(null)}
           onConfirmar={() => setInscripcionConfirmar(null)}
-          titulo="No puedes desinscribirte todavía"
+          titulo="No puedes cancelar la inscripción"
           texto={
             inscripcionConfirmar.bloqueo.saldo > 0 &&
             inscripcionConfirmar.bloqueo.reservas > 0
-              ? `Tienes un saldo pendiente de $${inscripcionConfirmar.bloqueo.saldo.toFixed(2)} y ${inscripcionConfirmar.bloqueo.reservas} reservas futuras en este lugar. Debes resolver estos pendientes antes de desinscribirte.`
+              ? `Tienes un saldo pendiente de $${inscripcionConfirmar.bloqueo.saldo.toFixed(2)} y ${inscripcionConfirmar.bloqueo.reservas} reservas futuras en este lugar. Debes resolver estos pendientes antes de cancelar tu inscripción.`
               : inscripcionConfirmar.bloqueo.saldo > 0
-                ? `Tienes un saldo pendiente de $${inscripcionConfirmar.bloqueo.saldo.toFixed(2)} en este lugar. Debes cancelar la deuda antes de desinscribirte.`
-                : `Tienes ${inscripcionConfirmar.bloqueo.reservas} reservas futuras en este lugar. Debes cancelarlas antes de desinscribirte.`
+                ? `Tienes un saldo pendiente de $${inscripcionConfirmar.bloqueo.saldo.toFixed(2)} en este lugar. Debes cancelar la deuda antes de cancelar tu inscripción.`
+                : `Tienes ${inscripcionConfirmar.bloqueo.reservas} reservas futuras en este lugar. Debes cancelarlas antes de cancelar tu inscripción.`
           }
           textoConfirmar="Entendido"
         />
@@ -625,9 +644,12 @@ export default function MisReservas() {
                       Ver horarios →
                     </button>
                   )}
-                  {i.estado !== 'pendiente' && (
-                    <button style={styles.btnCancelar} onClick={() => cancelarInscripcion(i)}>
-                      Cancelar inscripción
+                  {(i.estado === 'pendiente' || i.estado === 'aprobada') && (
+                    <button
+                      style={styles.btnCancelar}
+                      onClick={() => cancelarInscripcion(i)}
+                    >
+                      {i.estado === 'pendiente' ? 'Cancelar solicitud' : 'Cancelar inscripción'}
                     </button>
                   )}
                 </div>
