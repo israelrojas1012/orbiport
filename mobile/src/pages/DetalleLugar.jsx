@@ -243,7 +243,7 @@ export default function DetalleLugar() {
 
   const cancelarSolicitud = async () => {
     try {
-      await API.delete(`/inscripciones/salir/${usuario.id}/${id}`);
+      await API.delete(`/inscripciones/cancelar/${usuario.id}/${id}`);
       setEstadoInscripcion(null);
       mostrarToast('Solicitud cancelada correctamente.', 'exito');
     } catch (err) {

@@ -112,9 +112,8 @@ export default function MisReservas() {
   const ejecutarCancelacionInscripcion = async (i) => {
     try {
       await API.delete(`/inscripciones/salir/${usuario.id}/${i.lugar_id}`);
-
       setInscripciones(prev => prev.filter(x => x.id !== i.id));
-      mostrarToast('Te has desinscrito del lugar');
+      mostrarToast('Inscripción cancelada');
     } catch (err) {
       if (err.response?.status === 409) {
         const { saldo_pendiente, reservas_futuras } = err.response.data;
@@ -126,14 +125,10 @@ export default function MisReservas() {
             reservas: Number(reservas_futuras || 0)
           }
         });
-
         return;
       }
 
-      mostrarToast(
-        err.response?.data?.error || 'Error al desinscribirse',
-        'error'
-      );
+      mostrarToast(err.response?.data?.error || 'Error al cancelar', 'error');
     }
   };
 
