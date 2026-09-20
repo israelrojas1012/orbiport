@@ -341,36 +341,49 @@ router.put('/saldos/:usuario_id/:lugar_id/pago', async (req, res) => {
 });
 
 // OBTENER HORARIOS CON RESERVAS DE UN DIA (incluye horarios especiales)
+// OBTENER HORARIOS DE UN DIA (incluye horarios especiales)
 router.get('/horarios-dia/:lugar_id/:fecha', async (req, res) => {
   try {
     const { lugar_id, fecha } = req.params;
+
     const normales = await pool.query(`
-      SELECT h.id as horario_id, h.hora_inicio, h.hora_fin, h.cupos,
-             COUNT(r.id) as reservados
+      SELECT
+        h.id AS horario_id,
+        h.hora_inicio,
+        h.hora_fin,
+        h.cupos,
+        COUNT(r.id) AS reservados
       FROM horarios_plantilla h
-      INNER JOIN reservas r ON r.horario_id = h.id AND r.fecha = $2
-      WHERE h.lugar_id = $1 AND h.activo = true
-      GROUP BY h.id
+      LEFT JOIN reservas r
+        ON r.horario_id = h.id
+        AND r.fecha = $2
+      WHERE h.lugar_id = $1
+        AND h.activo = true
+      GROUP BY h.id, h.hora_inicio, h.hora_fin, h.cupos
       ORDER BY h.hora_inicio ASC
     `, [lugar_id, fecha]);
 
     const especiales = await pool.query(`
-      SELECT e.id as horario_id, e.hora_inicio, e.hora_fin, e.cupos,
-             COUNT(r.id) as reservados
+      SELECT
+        e.id AS horario_id,
+        e.hora_inicio,
+        e.hora_fin,
+        e.cupos,
+        COUNT(r.id) AS reservados
       FROM horarios_excepciones e
-      INNER JOIN reservas r ON r.excepcion_id = e.id AND r.fecha = $2
-      WHERE e.lugar_id = $1 AND e.cerrado = false
-      GROUP BY e.id
+      LEFT JOIN reservas r
+        ON r.excepcion_id = e.id
+        AND r.fecha = $2
+      WHERE e.lugar_id = $1
+        AND e.cerrado = false
+        AND e.fecha = $2
+      GROUP BY e.id, e.hora_inicio, e.hora_fin, e.cupos
       ORDER BY e.hora_inicio ASC
     `, [lugar_id, fecha]);
 
-    const horariosValidos = [
-      ...normales.rows,
-      ...especiales.rows
-    ].filter(h => puedePasarLista(fecha, h.hora_inicio));
-
-    res.json(horariosValidos);
+    res.json([...normales.rows, ...especiales.rows]);
   } catch (err) {
+    console.error(err);
     res.status(500).json({ error: 'Error al obtener horarios' });
   }
 });

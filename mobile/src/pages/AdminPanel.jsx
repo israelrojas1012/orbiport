@@ -99,17 +99,17 @@ export default function AdminPanel() {
     }
   };
 
-useEffect(() => {
-  console.log('ADMIN ID:', usuario.id);
+  useEffect(() => {
+    console.log('ADMIN ID:', usuario.id);
 
-  API.get(`/admin/lugar/${usuario.id}`).then(res => {
-    console.log('ID DEL LUGAR:', res.data.id);
-    console.log('NOMBRE DEL LUGAR:', res.data.nombre);
+    API.get(`/admin/lugar/${usuario.id}`).then(res => {
+      console.log('ID DEL LUGAR:', res.data.id);
+      console.log('NOMBRE DEL LUGAR:', res.data.nombre);
 
-    setLugar(res.data);
-    
-  }).catch(() => {});
-}, []);
+      setLugar(res.data);
+      
+    }).catch(() => {});
+  }, []);
 
 
 
