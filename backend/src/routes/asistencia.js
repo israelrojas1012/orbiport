@@ -342,6 +342,122 @@ router.put('/saldos/:usuario_id/:lugar_id/pago', async (req, res) => {
   }
 });
 
+// HISTORIAL DE PAGOS COMPLETO DE UN USUARIO
+router.get('/historial-pagos/:usuario_id', async (req, res) => {
+  try {
+    const { usuario_id } = req.params;
+
+    const result = await pool.query(`
+      SELECT
+        p.id,
+        p.usuario_id,
+        p.lugar_id,
+        l.nombre AS lugar_nombre,
+
+        p.monto,
+        p.pagado,
+        GREATEST(p.monto - p.pagado, 0) AS saldo_restante,
+        p.estado,
+
+        a.fecha AS fecha_reserva,
+        COALESCE(h.hora_inicio, e.hora_inicio) AS hora_inicio,
+        COALESCE(h.hora_fin, e.hora_fin) AS hora_fin,
+
+        p.creado_en AS fecha_creacion_penalizacion,
+        p.ultimo_pago_en AS fecha_ultimo_pago
+
+      FROM penalizaciones p
+
+      JOIN lugares l
+        ON l.id = p.lugar_id
+
+      LEFT JOIN asistencia a
+        ON a.id = p.asistencia_id
+
+      LEFT JOIN reservas r
+        ON r.id = a.reserva_id
+
+      LEFT JOIN horarios_plantilla h
+        ON h.id = r.horario_id
+
+      LEFT JOIN horarios_excepciones e
+        ON e.id = r.excepcion_id
+
+      WHERE p.usuario_id = $1
+
+      ORDER BY p.creado_en DESC, p.id DESC
+    `, [usuario_id]);
+
+    res.json(result.rows);
+
+  } catch (err) {
+    console.error('Error historial de pagos usuario:', err);
+
+    res.status(500).json({
+      error: 'Error al obtener historial de pagos'
+    });
+  }
+});
+
+
+// HISTORIAL DE PAGOS DE UN USUARIO EN UN LUGAR
+router.get('/historial-pagos/:usuario_id/:lugar_id', async (req, res) => {
+  try {
+    const { usuario_id, lugar_id } = req.params;
+
+    const result = await pool.query(`
+      SELECT
+        p.id,
+        p.usuario_id,
+        p.lugar_id,
+        l.nombre AS lugar_nombre,
+
+        p.monto,
+        p.pagado,
+        GREATEST(p.monto - p.pagado, 0) AS saldo_restante,
+        p.estado,
+
+        a.fecha AS fecha_reserva,
+        COALESCE(h.hora_inicio, e.hora_inicio) AS hora_inicio,
+        COALESCE(h.hora_fin, e.hora_fin) AS hora_fin,
+
+        p.creado_en AS fecha_creacion_penalizacion,
+        p.ultimo_pago_en AS fecha_ultimo_pago
+
+      FROM penalizaciones p
+
+      JOIN lugares l
+        ON l.id = p.lugar_id
+
+      LEFT JOIN asistencia a
+        ON a.id = p.asistencia_id
+
+      LEFT JOIN reservas r
+        ON r.id = a.reserva_id
+
+      LEFT JOIN horarios_plantilla h
+        ON h.id = r.horario_id
+
+      LEFT JOIN horarios_excepciones e
+        ON e.id = r.excepcion_id
+
+      WHERE p.usuario_id = $1
+        AND p.lugar_id = $2
+
+      ORDER BY p.creado_en DESC, p.id DESC
+    `, [usuario_id, lugar_id]);
+
+    res.json(result.rows);
+
+  } catch (err) {
+    console.error('Error historial de pagos admin:', err);
+
+    res.status(500).json({
+      error: 'Error al obtener historial de pagos'
+    });
+  }
+});
+
 // OBTENER HORARIOS DE UN DIA (incluye horarios especiales)
 router.get('/horarios-dia/:lugar_id/:fecha', async (req, res) => {
   try {

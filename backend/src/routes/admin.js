@@ -117,7 +117,7 @@ router.get('/inscripciones/:lugar_id', async (req, res) => {
   try {
     const { lugar_id } = req.params;
     const result = await pool.query(`
-      SELECT i.id, i.estado, i.creado_en,
+      SELECT i.id, i.usuario_id, i.estado, i.creado_en,
              u.nombre, u.apellido, u.correo, u.nickname, u.avatar
       FROM inscripciones i
       JOIN usuarios u ON i.usuario_id = u.id

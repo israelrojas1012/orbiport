@@ -40,6 +40,9 @@ export default function Perfil() {
   const [mostrarConfirmar, setMostrarConfirmar] = useState(false);
   const [toast, setToast] = useState(null);
   const [saldo, setSaldo] = useState(null);
+  const [historialPagos, setHistorialPagos] = useState([]);
+  const [mostrarHistorial, setMostrarHistorial] = useState(false);
+  const [cargandoHistorial, setCargandoHistorial] = useState(false);
   const [confirmarSalida, setConfirmarSalida] = useState(false);
   const [notificaciones, setNotificaciones] = useState([]);
   const [mostrarNotif, setMostrarNotif] = useState(false);
@@ -130,6 +133,53 @@ export default function Perfil() {
     localStorage.clear();
     navigate('/');
   };
+
+  const abrirHistorialPagos = async () => {
+    try {
+      setCargandoHistorial(true);
+
+      const res = await API.get(
+        `/asistencia/historial-pagos/${usuario.id}`
+      );
+
+      setHistorialPagos(res.data);
+      setMostrarHistorial(true);
+    } catch (err) {
+      mostrarToast(
+        err.response?.data?.error || 'Error al obtener historial de pagos',
+        'error'
+      );
+    } finally {
+      setCargandoHistorial(false);
+    }
+  };
+
+  const formatearFechaHistorial = fecha => {
+    if (!fecha) return 'No registrado';
+
+    return new Intl.DateTimeFormat('es-EC', {
+      timeZone: 'America/Guayaquil',
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    }).format(new Date(fecha));
+  };
+
+  const formatearFechaHoraHistorial = fecha => {
+    if (!fecha) return 'No registrado';
+
+    return new Intl.DateTimeFormat('es-EC', {
+      timeZone: 'America/Guayaquil',
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    }).format(new Date(fecha));
+  };
+
+  const formatearHoraHistorial = hora =>
+    hora ? String(hora).slice(0, 5) : 'No registrada';
 
   return (
     <div style={styles.container}>
@@ -339,6 +389,22 @@ export default function Perfil() {
           </div>
         )}
 
+        {/* Historial de pagos */}
+        {usuario.rol === 'cliente' && (
+          <div style={{ marginBottom: 16 }}>
+            <button
+              style={{
+                ...styles.btnEditar,
+                width: '100%'
+              }}
+              onClick={abrirHistorialPagos}
+              disabled={cargandoHistorial}
+            >
+              🧾 {cargandoHistorial ? 'Cargando...' : 'Historial de pagos'}
+            </button>
+          </div>
+        )}
+
         {/* Datos personales */}
         <div style={styles.card}>
           <div style={styles.cardHeader}>
@@ -510,7 +576,7 @@ export default function Perfil() {
                   </span>
                 </div>
               )}
-              
+
               <div style={styles.infoRow}>
                 <span style={styles.infoLabel}>Avatar</span>
                 <span style={{ fontSize: 26 }}>
@@ -633,11 +699,158 @@ export default function Perfil() {
               <span style={styles.passDots}>••••••••</span>
             </div>
           )}
-        </div>
-
+        </div>   
       </div>
+      
+      {/* MODAL HISTORIAL DE PAGOS */}
+      {mostrarHistorial && (
+        <div style={styles.historialOverlay}>
+          <div style={styles.historialModal}>
+            <div style={styles.historialHeader}>
+              <div>
+                <p style={styles.historialTitulo}>Historial de pagos</p>
+                <p style={styles.historialSubtitulo}>
+                  Consulta tus cargos y pagos registrados
+                </p>
+              </div>
 
+              <button
+                style={styles.historialCerrar}
+                onClick={() => setMostrarHistorial(false)}
+              >
+                ✕
+              </button>
+            </div>
 
+            <div style={styles.historialContenido}>
+              {historialPagos.length === 0 ? (
+                <div style={styles.historialVacio}>
+                  <div style={{ fontSize: 36 }}>🧾</div>
+
+                  <p style={styles.historialVacioTitulo}>
+                    Sin movimientos
+                  </p>
+
+                  <p style={styles.historialVacioTexto}>
+                    Todavía no tienes cargos ni pagos registrados.
+                  </p>
+                </div>
+              ) : (
+                historialPagos.map(m => {
+                  const monto = Number(m.monto || 0);
+                  const pagado = Number(m.pagado || 0);
+                  const saldoRestante = Number(m.saldo_restante || 0);
+
+                  return (
+                    <div key={m.id} style={styles.historialItem}>
+                      <div style={styles.historialItemHeader}>
+                        <div>
+                          <p style={styles.historialLugar}>
+                            {m.lugar_nombre}
+                          </p>
+
+                          <p style={styles.historialReserva}>
+                            Reserva: {formatearFechaHistorial(m.fecha_reserva)}
+                            {' · '}
+                            {formatearHoraHistorial(m.hora_inicio)}
+                          </p>
+                        </div>
+
+                        <span
+                          style={{
+                            ...styles.historialEstado,
+                            background:
+                              m.estado === 'pagado'
+                                ? 'rgba(16, 185, 129, 0.1)'
+                                : 'rgba(245, 158, 11, 0.1)',
+                            color:
+                              m.estado === 'pagado'
+                                ? 'var(--color-exito)'
+                                : 'var(--color-advertencia)',
+                            borderColor:
+                              m.estado === 'pagado'
+                                ? 'rgba(16, 185, 129, 0.2)'
+                                : 'rgba(245, 158, 11, 0.2)'
+                          }}
+                        >
+                          {m.estado === 'pagado' ? 'Pagado' : 'Pendiente'}
+                        </span>
+                      </div>
+
+                      <div style={styles.historialMontos}>
+                        <div style={styles.historialMontoItem}>
+                          <span style={styles.historialMontoLabel}>
+                            Monto
+                          </span>
+
+                          <strong style={styles.historialMontoValor}>
+                            ${monto.toFixed(2)}
+                          </strong>
+                        </div>
+
+                        <div style={styles.historialMontoItem}>
+                          <span style={styles.historialMontoLabel}>
+                            Pagado
+                          </span>
+
+                          <strong style={styles.historialMontoValor}>
+                            ${pagado.toFixed(2)}
+                          </strong>
+                        </div>
+
+                        <div style={styles.historialMontoItem}>
+                          <span style={styles.historialMontoLabel}>
+                            Saldo
+                          </span>
+
+                          <strong
+                            style={{
+                              ...styles.historialMontoValor,
+                              color:
+                                saldoRestante > 0
+                                  ? 'var(--color-error)'
+                                  : 'var(--color-exito)'
+                            }}
+                          >
+                            ${saldoRestante.toFixed(2)}
+                          </strong>
+                        </div>
+                      </div>
+
+                      <div style={styles.historialFechas}>
+                        <p style={styles.historialFechaTexto}>
+                          <strong>Cargo generado:</strong>{' '}
+                          {formatearFechaHoraHistorial(
+                            m.fecha_creacion_penalizacion
+                          )}
+                        </p>
+
+                        <p style={styles.historialFechaTexto}>
+                          <strong>Pago registrado:</strong>{' '}
+                          {m.estado !== 'pagado' && !m.fecha_ultimo_pago
+                            ? 'Pendiente'
+                            : m.fecha_ultimo_pago
+                              ? formatearFechaHoraHistorial(
+                                  m.fecha_ultimo_pago
+                                )
+                              : 'No registrado'}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            <button
+              style={styles.historialBtnCerrar}
+              onClick={() => setMostrarHistorial(false)}
+            >
+              Cerrar
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* NAVBAR */}
       <div style={styles.navbar}>
@@ -1337,5 +1550,180 @@ const styles = {
   navLabel: {
     fontSize: 11,
     fontWeight: 600,
+  },
+
+  historialOverlay: {
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    background: 'rgba(0, 0, 0, 0.55)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 20,
+    zIndex: 1000,
+  },
+
+  historialModal: {
+    width: '100%',
+    maxWidth: 520,
+    maxHeight: '85vh',
+    background: 'var(--bg-card)',
+    borderRadius: 'var(--radius-lg)',
+    border: '1px solid var(--border-suave)',
+    boxShadow: 'var(--shadow-lg)',
+    padding: 20,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 16,
+  },
+
+  historialHeader: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+
+  historialTitulo: {
+    fontSize: 18,
+    fontWeight: 700,
+    color: 'var(--text-principal)',
+  },
+
+  historialSubtitulo: {
+    fontSize: 12,
+    color: 'var(--text-suave)',
+    marginTop: 3,
+  },
+
+  historialCerrar: {
+    width: 32,
+    height: 32,
+    borderRadius: 'var(--radius-full)',
+    border: '1px solid var(--border-suave)',
+    background: 'var(--bg-hover)',
+    color: 'var(--text-secundario)',
+    cursor: 'pointer',
+    flexShrink: 0,
+  },
+
+  historialContenido: {
+    overflowY: 'auto',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 12,
+    paddingRight: 2,
+  },
+
+  historialVacio: {
+    textAlign: 'center',
+    padding: '32px 12px',
+  },
+
+  historialVacioTitulo: {
+    fontSize: 15,
+    fontWeight: 700,
+    color: 'var(--text-principal)',
+    marginTop: 10,
+  },
+
+  historialVacioTexto: {
+    fontSize: 12,
+    color: 'var(--text-suave)',
+    marginTop: 4,
+  },
+
+  historialItem: {
+    border: '1px solid var(--border-suave)',
+    borderRadius: 'var(--radius-md)',
+    padding: 14,
+    background: 'var(--bg-hover)',
+  },
+
+  historialItemHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: 10,
+  },
+
+  historialLugar: {
+    fontSize: 14,
+    fontWeight: 700,
+    color: 'var(--text-principal)',
+  },
+
+  historialReserva: {
+    fontSize: 11,
+    color: 'var(--text-suave)',
+    marginTop: 3,
+  },
+
+  historialEstado: {
+    fontSize: 11,
+    fontWeight: 700,
+    padding: '5px 9px',
+    borderRadius: 'var(--radius-full)',
+    border: '1px solid',
+    flexShrink: 0,
+  },
+
+  historialMontos: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(3, 1fr)',
+    gap: 8,
+    marginTop: 12,
+  },
+
+  historialMontoItem: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 3,
+    padding: '9px 8px',
+    background: 'var(--bg-card)',
+    border: '1px solid var(--border-suave)',
+    borderRadius: 'var(--radius-sm)',
+    textAlign: 'center',
+  },
+
+  historialMontoLabel: {
+    fontSize: 10,
+    color: 'var(--text-suave)',
+    textTransform: 'uppercase',
+    fontWeight: 600,
+  },
+
+  historialMontoValor: {
+    fontSize: 14,
+    color: 'var(--text-principal)',
+  },
+
+  historialFechas: {
+    marginTop: 12,
+    paddingTop: 10,
+    borderTop: '1px solid var(--border-suave)',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 5,
+  },
+
+  historialFechaTexto: {
+    fontSize: 11,
+    color: 'var(--text-secundario)',
+  },
+
+  historialBtnCerrar: {
+    width: '100%',
+    padding: '11px',
+    borderRadius: 'var(--radius-sm)',
+    border: '1px solid var(--border-suave)',
+    background: 'var(--bg-hover)',
+    color: 'var(--text-principal)',
+    fontSize: 13,
+    fontWeight: 600,
+    cursor: 'pointer',
   },
 };
