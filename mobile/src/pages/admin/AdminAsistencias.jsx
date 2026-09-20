@@ -30,11 +30,74 @@ const AdminAsistencias = ({ lugar, mostrarMensaje, styles }) => {
     }
   };
 
+  const obtenerAhoraEcuador = () => {
+    const partes = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/Guayaquil',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hourCycle: 'h23'
+    }).formatToParts(new Date());
+
+    const get = tipo => Number(partes.find(p => p.type === tipo).value);
+
+    return new Date(Date.UTC(
+      get('year'),
+      get('month') - 1,
+      get('day'),
+      get('hour'),
+      get('minute'),
+      get('second')
+    ));
+  };
+
+  const crearFechaHoraEcuador = (fecha, hora) => {
+    const [year, month, day] = String(fecha).slice(0, 10).split('-').map(Number);
+    const [hour, minute] = String(hora).slice(0, 5).split(':').map(Number);
+
+    if ([year, month, day, hour, minute].some(Number.isNaN)) {
+      return null;
+    }
+
+    return new Date(Date.UTC(
+      year,
+      month - 1,
+      day,
+      hour,
+      minute,
+      0
+    ));
+  };
+
   const cargarReservasHorario = async (horario) => {
+    const inicio = crearFechaHoraEcuador(
+      fechaAsistencia,
+      horario.hora_inicio
+    );
+
+    if (!inicio) {
+      mostrarMensaje('No se pudo determinar la fecha del horario');
+      return;
+    }
+
+    const limite = obtenerAhoraEcuador().getTime() + 30 * 60 * 1000;
+
+    if (inicio.getTime() > limite) {
+      setMensajeAsistencia(
+        '⏰ No puedes pasar lista de un horario futuro. Solo puedes hacerlo cuando falten 30 minutos o menos.'
+      );
+      setTimeout(() => setMensajeAsistencia(''), 4000);
+      return;
+    }
+
     try {
       const res = await API.get(
         `/asistencia/horario/${horario.horario_id}/${fechaAsistencia}`
       );
+
       setListaAsistencia(res.data);
       setHorarioActivo(horario);
     } catch (err) {
@@ -196,7 +259,24 @@ const AdminAsistencias = ({ lugar, mostrarMensaje, styles }) => {
                 </p>
               </div>
 
-              <button style={styles.btnAprobar}>
+              <button
+                style={{
+                  ...styles.btnAprobar,
+                  opacity: (() => {
+                    const inicio = crearFechaHoraEcuador(
+                      fechaAsistencia,
+                      h.hora_inicio
+                    );
+
+                    if (!inicio) return 0.5;
+
+                    const limite =
+                      obtenerAhoraEcuador().getTime() + 30 * 60 * 1000;
+
+                    return inicio.getTime() > limite ? 0.5 : 1;
+                  })(),
+                }}
+              >
                 Pasar lista
               </button>
             </div>
