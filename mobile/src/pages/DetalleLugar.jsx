@@ -6,6 +6,23 @@ import ConfirmarSalida from '../components/ConfirmarSalida';
 import detalleLugarStyles from '../styles/detalleLugarStyles';
 
 const styles = detalleLugarStyles;
+const avatares = [
+  { id: 'avatar_01', emoji: '😎' },
+  { id: 'avatar_02', emoji: '🤓' },
+  { id: 'avatar_03', emoji: '😊' },
+  { id: 'avatar_04', emoji: '😁' },
+  { id: 'avatar_05', emoji: '🧢' },
+  { id: 'avatar_06', emoji: '🎮' },
+  { id: 'avatar_07', emoji: '⚡' },
+  { id: 'avatar_08', emoji: '🔥' },
+  { id: 'avatar_09', emoji: '🐺' },
+  { id: 'avatar_10', emoji: '🦊' },
+  { id: 'avatar_11', emoji: '🐼' },
+  { id: 'avatar_12', emoji: '🦁' }
+];
+
+const obtenerAvatar = id =>
+  avatares.find(a => a.id === id)?.emoji || '👤';
 
 const DIAS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
 const DIAS_JS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
@@ -526,10 +543,20 @@ export default function DetalleLugar() {
                 <div style={styles.modalLista}>
                   {personas.map((p, i) => (
                     <div key={i} style={styles.modalPersona}>
-                      <div style={styles.modalAvatar}>
-                        {p.nombre?.charAt(0).toUpperCase()}
+                      <div
+                        style={{
+                          ...styles.modalAvatar,
+                          fontSize: 24
+                        }}
+                      >
+                        {obtenerAvatar(p.avatar)}
                       </div>
-                      <span style={styles.modalNombre}>{p.nombre} {p.apellido}</span>
+
+                      <span style={styles.modalNombre}>
+                        {p.nickname
+                          ? `@${p.nickname}`
+                          : `${p.nombre || ''} ${p.apellido || ''}`.trim() || 'Usuario'}
+                      </span>
                     </div>
                   ))}
                 </div>

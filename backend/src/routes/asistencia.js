@@ -425,13 +425,15 @@ router.get('/personas/:horario_id/:fecha', async (req, res) => {
 
     const result = await pool.query(`
       SELECT
+        u.nombre,
+        u.apellido,
         u.nickname,
         u.avatar
       FROM reservas r
       JOIN usuarios u ON r.usuario_id = u.id
       WHERE (r.horario_id = $1 OR r.excepcion_id = $1)
         AND r.fecha = $2
-      ORDER BY u.nickname ASC
+      ORDER BY COALESCE(u.nickname, u.nombre) ASC
     `, [horario_id, fecha]);
 
     res.json(result.rows);
