@@ -14,6 +14,23 @@ import adminStyles from '../styles/adminStyles';
 
 
 const styles = adminStyles;
+const avatares = [
+  { id: 'avatar_01', emoji: '😎' },
+  { id: 'avatar_02', emoji: '🤓' },
+  { id: 'avatar_03', emoji: '😊' },
+  { id: 'avatar_04', emoji: '😁' },
+  { id: 'avatar_05', emoji: '🧢' },
+  { id: 'avatar_06', emoji: '🎮' },
+  { id: 'avatar_07', emoji: '⚡' },
+  { id: 'avatar_08', emoji: '🔥' },
+  { id: 'avatar_09', emoji: '🐺' },
+  { id: 'avatar_10', emoji: '🦊' },
+  { id: 'avatar_11', emoji: '🐼' },
+  { id: 'avatar_12', emoji: '🦁' }
+];
+
+const obtenerAvatar = id =>
+  avatares.find(a => a.id === id)?.emoji || '👤';
 
 const formatHora = (hora) => {
   if (!hora) return '';
@@ -250,15 +267,48 @@ export default function AdminPanel() {
               <div style={styles.listaInscritos}>
                 {personasInscritas.map((p, idx) => (
                   <div key={idx} style={styles.personaRow}>
-                    <div style={styles.cardIcono}>
-                      {p.nombre?.charAt(0).toUpperCase()}
+                    <div
+                      style={{
+                        ...styles.cardIcono,
+                        fontSize: 24
+                      }}
+                    >
+                      {obtenerAvatar(p.avatar)}
                     </div>
+
                     <div style={{ flex: 1 }}>
-                      <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-principal)' }}>
-                        {p.nombre} {p.apellido}
+                      <p
+                        style={{
+                          fontSize: 14,
+                          fontWeight: 700,
+                          color: 'var(--text-principal)'
+                        }}
+                      >
+                        {p.nickname
+                          ? `@${p.nickname}`
+                          : `${p.nombre || ''} ${p.apellido || ''}`.trim() || 'Usuario'}
                       </p>
+
+                      {p.nickname && (
+                        <p
+                          style={{
+                            fontSize: 11,
+                            color: 'var(--text-suave)',
+                            marginTop: 2
+                          }}
+                        >
+                          {p.nombre} {p.apellido}
+                        </p>
+                      )}
+
                       {p.correo && (
-                        <p style={{ fontSize: 11, color: 'var(--text-suave)', marginTop: 2 }}>
+                        <p
+                          style={{
+                            fontSize: 11,
+                            color: 'var(--text-suave)',
+                            marginTop: 2
+                          }}
+                        >
                           {p.correo}
                         </p>
                       )}
