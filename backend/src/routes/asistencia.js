@@ -340,7 +340,6 @@ router.put('/saldos/:usuario_id/:lugar_id/pago', async (req, res) => {
   }
 });
 
-// OBTENER HORARIOS CON RESERVAS DE UN DIA (incluye horarios especiales)
 // OBTENER HORARIOS DE UN DIA (incluye horarios especiales)
 router.get('/horarios-dia/:lugar_id/:fecha', async (req, res) => {
   try {
@@ -359,6 +358,15 @@ router.get('/horarios-dia/:lugar_id/:fecha', async (req, res) => {
         AND r.fecha = $2
       WHERE h.lugar_id = $1
         AND h.activo = true
+        AND h.dia = CASE EXTRACT(DOW FROM $2::date)
+          WHEN 0 THEN 'Domingo'
+          WHEN 1 THEN 'Lunes'
+          WHEN 2 THEN 'Martes'
+          WHEN 3 THEN 'Miércoles'
+          WHEN 4 THEN 'Jueves'
+          WHEN 5 THEN 'Viernes'
+          WHEN 6 THEN 'Sábado'
+        END
       GROUP BY h.id, h.hora_inicio, h.hora_fin, h.cupos
       ORDER BY h.hora_inicio ASC
     `, [lugar_id, fecha]);
