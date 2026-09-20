@@ -156,8 +156,8 @@ router.post('/verificar', async (req, res) => {
     const result = await pool.query(
       `INSERT INTO usuarios
         (nombre, apellido, correo, contrasena, verificado, acepto_terminos, fecha_acepto_terminos)
-       VALUES ($1, $2, $3, $4, true, true, NOW())
-       RETURNING id, nombre, apellido, correo, rol, acepto_terminos`,
+      VALUES ($1, $2, $3, $4, true, true, NOW())
+      RETURNING id, nombre, apellido, correo, rol, acepto_terminos, nickname, avatar`,
       [registro.nombre, registro.apellido, registro.correo, registro.contrasena]
     );
 
@@ -224,7 +224,9 @@ router.post('/login', async (req, res) => {
         apellido: usuario.apellido,
         correo: usuario.correo,
         rol: usuario.rol,
-        acepto_terminos: usuario.acepto_terminos
+        acepto_terminos: usuario.acepto_terminos,
+        nickname: usuario.nickname,
+        avatar: usuario.avatar
       }
     });
 
