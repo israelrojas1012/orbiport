@@ -1,5 +1,22 @@
 import { useEffect, useState } from 'react';
 import API from '../../services/api';
+const avatares = [
+  { id: 'avatar_01', emoji: '😎' },
+  { id: 'avatar_02', emoji: '🤓' },
+  { id: 'avatar_03', emoji: '😊' },
+  { id: 'avatar_04', emoji: '😁' },
+  { id: 'avatar_05', emoji: '🧢' },
+  { id: 'avatar_06', emoji: '🎮' },
+  { id: 'avatar_07', emoji: '⚡' },
+  { id: 'avatar_08', emoji: '🔥' },
+  { id: 'avatar_09', emoji: '🐺' },
+  { id: 'avatar_10', emoji: '🦊' },
+  { id: 'avatar_11', emoji: '🐼' },
+  { id: 'avatar_12', emoji: '🦁' }
+];
+
+const obtenerAvatar = id =>
+  avatares.find(a => a.id === id)?.emoji || '👤';
 
 const AdminInscripciones = ({ lugar, mostrarMensaje, styles }) => {
   const [inscripciones, setInscripciones] = useState([]);
@@ -75,6 +92,7 @@ const AdminInscripciones = ({ lugar, mostrarMensaje, styles }) => {
     const q = busqueda.toLowerCase();
 
     return (
+      i.nickname?.toLowerCase().includes(q) ||
       i.nombre?.toLowerCase().includes(q) ||
       i.apellido?.toLowerCase().includes(q) ||
       i.correo?.toLowerCase().includes(q)
@@ -153,7 +171,7 @@ const AdminInscripciones = ({ lugar, mostrarMensaje, styles }) => {
 
         <input
           style={styles.searchInputAdmin}
-          placeholder="Buscar por nombre, apellido o correo..."
+          placeholder="Buscar por nickname, nombre, apellido o correo..."
           value={busqueda}
           onChange={e => setBusqueda(e.target.value)}
         />
@@ -184,14 +202,25 @@ const AdminInscripciones = ({ lugar, mostrarMensaje, styles }) => {
         filtrados.map(i => (
           <div key={i.id} style={styles.card}>
             <div style={styles.cardHeaderRow}>
-              <div style={styles.cardIcono}>
-                {i.nombre?.charAt(0).toUpperCase()}
+              <div
+                style={{
+                  ...styles.cardIcono,
+                  fontSize: 24
+                }}
+              >
+                {obtenerAvatar(i.avatar)}
               </div>
 
               <div style={{ flex: 1 }}>
                 <p style={styles.cardTitulo}>
-                  {i.nombre} {i.apellido}
+                  {i.nickname ? `@${i.nickname}` : `${i.nombre} ${i.apellido}`}
                 </p>
+
+                {i.nickname && (
+                  <p style={styles.cardSub}>
+                    {i.nombre} {i.apellido}
+                  </p>
+                )}
 
                 <p style={styles.cardSub}>
                   {i.correo}

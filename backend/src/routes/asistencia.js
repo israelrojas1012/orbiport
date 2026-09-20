@@ -74,7 +74,7 @@ router.get('/lista/:lugar_id/:fecha', async (req, res) => {
     const { lugar_id, fecha } = req.params;
     const result = await pool.query(`
       SELECT r.id as reserva_id, r.fecha, r.usuario_id,
-             u.nombre, u.apellido,
+             u.nombre, u.apellido, u.nickname, u.avatar,
              COALESCE(h.hora_inicio, e.hora_inicio) as hora_inicio,
              COALESCE(h.hora_fin, e.hora_fin) as hora_fin,
              COALESCE(h.dia, 'Especial') as dia,
@@ -257,7 +257,9 @@ router.get('/penalizaciones/lugar/:lugar_id', async (req, res) => {
         p.creado_en AS fecha_creacion_penalizacion,
         p.ultimo_pago_en AS fecha_ultimo_pago,
         u.nombre,
-        u.apellido
+        u.apellido,
+        u.nickname,
+        u.avatar
       FROM penalizaciones p
       JOIN asistencia a ON p.asistencia_id = a.id
       JOIN usuarios u ON p.usuario_id = u.id
@@ -280,7 +282,7 @@ router.get('/saldos/:lugar_id', async (req, res) => {
     const result = await pool.query(`
       SELECT 
         u.id as usuario_id,
-        u.nombre, u.apellido,
+        u.nombre, u.apellido, u.nickname, u.avatar,
         COUNT(p.id) as total_faltas,
         SUM(p.monto) as total_deuda,
         SUM(p.pagado) as total_pagado,
@@ -288,7 +290,7 @@ router.get('/saldos/:lugar_id', async (req, res) => {
       FROM penalizaciones p
       JOIN usuarios u ON p.usuario_id = u.id
       WHERE p.lugar_id = $1
-      GROUP BY u.id, u.nombre, u.apellido
+      GROUP BY u.id, u.nombre, u.apellido, u.nickname, u.avatar
       HAVING SUM(p.monto - p.pagado) > 0
       ORDER BY saldo_pendiente DESC
     `, [lugar_id]);
@@ -402,8 +404,8 @@ router.get('/horario/:horario_id/:fecha', async (req, res) => {
     const { horario_id, fecha } = req.params;
     const result = await pool.query(`
       SELECT r.id as reserva_id, r.fecha, r.usuario_id,
-             u.nombre, u.apellido,
-             a.asistio, a.id as asistencia_id
+              u.nombre, u.apellido, u.nickname, u.avatar,
+              a.asistio, a.id as asistencia_id
       FROM reservas r
       JOIN usuarios u ON r.usuario_id = u.id
       LEFT JOIN asistencia a ON a.reserva_id = r.id
@@ -420,17 +422,23 @@ router.get('/horario/:horario_id/:fecha', async (req, res) => {
 router.get('/personas/:horario_id/:fecha', async (req, res) => {
   try {
     const { horario_id, fecha } = req.params;
+
     const result = await pool.query(`
-      SELECT u.nombre, u.apellido
+      SELECT
+        u.nickname,
+        u.avatar
       FROM reservas r
       JOIN usuarios u ON r.usuario_id = u.id
-      WHERE (r.horario_id = $1 OR r.excepcion_id = $1) AND r.fecha = $2
-      ORDER BY u.nombre ASC
+      WHERE (r.horario_id = $1 OR r.excepcion_id = $1)
+        AND r.fecha = $2
+      ORDER BY u.nickname ASC
     `, [horario_id, fecha]);
+
     res.json(result.rows);
   } catch (err) {
-    res.status(500).json({ error: 'Error al obtener personas' });
+    res.status(500).json({
+      error: 'Error al obtener personas'
+    });
   }
 });
-
 module.exports = router;

@@ -1,5 +1,22 @@
 import { useEffect, useState } from 'react';
 import API from '../../services/api';
+const avatares = [
+  { id: 'avatar_01', emoji: '😎' },
+  { id: 'avatar_02', emoji: '🤓' },
+  { id: 'avatar_03', emoji: '😊' },
+  { id: 'avatar_04', emoji: '😁' },
+  { id: 'avatar_05', emoji: '🧢' },
+  { id: 'avatar_06', emoji: '🎮' },
+  { id: 'avatar_07', emoji: '⚡' },
+  { id: 'avatar_08', emoji: '🔥' },
+  { id: 'avatar_09', emoji: '🐺' },
+  { id: 'avatar_10', emoji: '🦊' },
+  { id: 'avatar_11', emoji: '🐼' },
+  { id: 'avatar_12', emoji: '🦁' }
+];
+
+const obtenerAvatar = id =>
+  avatares.find(a => a.id === id)?.emoji || '👤';
 
 const AdminAsistencias = ({ lugar, mostrarMensaje, styles }) => {
   const [fechaAsistencia, setFechaAsistencia] = useState(() => {
@@ -190,6 +207,7 @@ const AdminAsistencias = ({ lugar, mostrarMensaje, styles }) => {
     const q = busquedaSaldos.toLowerCase();
 
     return (
+      s.nickname?.toLowerCase().includes(q) ||
       s.nombre?.toLowerCase().includes(q) ||
       s.apellido?.toLowerCase().includes(q)
     );
@@ -321,8 +339,13 @@ const AdminAsistencias = ({ lugar, mostrarMensaje, styles }) => {
 
           {listaAsistencia.map(r => (
             <div key={r.reserva_id} style={styles.personaRow}>
-              <div style={styles.cardIcono}>
-                {r.nombre?.charAt(0).toUpperCase()}
+              <div
+                style={{
+                  ...styles.cardIcono,
+                  fontSize: 24
+                }}
+              >
+                {obtenerAvatar(r.avatar)}
               </div>
 
               <div style={{ flex: 1 }}>
@@ -331,8 +354,18 @@ const AdminAsistencias = ({ lugar, mostrarMensaje, styles }) => {
                   fontWeight: 700,
                   color: 'var(--text-principal)'
                 }}>
-                  {r.nombre} {r.apellido}
+                  {r.nickname ? `@${r.nickname}` : `${r.nombre} ${r.apellido}`}
                 </p>
+
+                {r.nickname && (
+                  <p style={{
+                    fontSize: 12,
+                    color: 'var(--text-suave)',
+                    marginTop: 2
+                  }}>
+                    {r.nombre} {r.apellido}
+                  </p>
+                )}
               </div>
 
               {r.asistio === null || r.asistio === undefined ? (
@@ -431,7 +464,7 @@ const AdminAsistencias = ({ lugar, mostrarMensaje, styles }) => {
 
           <input
             style={styles.searchInputAdmin}
-            placeholder="Buscar por nombre o apellido..."
+            placeholder="Buscar por nickname, nombre o apellido..."
             value={busquedaSaldos}
             onChange={e => setBusquedaSaldos(e.target.value)}
           />
@@ -465,8 +498,18 @@ const AdminAsistencias = ({ lugar, mostrarMensaje, styles }) => {
                     fontWeight: 700,
                     color: 'var(--text-principal)'
                   }}>
-                    {s.nombre} {s.apellido}
+                    {s.nickname ? `@${s.nickname}` : `${s.nombre} ${s.apellido}`}
                   </p>
+
+                  {s.nickname && (
+                    <p style={{
+                      fontSize: 12,
+                      color: 'var(--text-suave)',
+                      marginTop: 2
+                    }}>
+                      {s.nombre} {s.apellido}
+                    </p>
+                  )}
 
                   <p style={{
                     fontSize: 12,
