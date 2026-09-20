@@ -206,7 +206,11 @@ router.get('/penalizaciones/:usuario_id/:lugar_id', async (req, res) => {
   try {
     const { usuario_id, lugar_id } = req.params;
     const result = await pool.query(`
-      SELECT p.*, a.fecha
+      SELECT
+        p.*,
+        a.fecha AS fecha_reserva,
+        p.creado_en AS fecha_creacion_penalizacion,
+        p.ultimo_pago_en AS fecha_ultimo_pago
       FROM penalizaciones p
       JOIN asistencia a ON p.asistencia_id = a.id
       WHERE p.usuario_id = $1 AND p.lugar_id = $2
@@ -228,7 +232,11 @@ router.put('/penalizaciones/:id/pago', async (req, res) => {
     const total_pagado = parseFloat(pen.rows[0].pagado) + parseFloat(monto_pagado);
     const estado = total_pagado >= parseFloat(pen.rows[0].monto) ? 'pagado' : 'pendiente';
     await pool.query(
-      'UPDATE penalizaciones SET pagado = $1, estado = $2 WHERE id = $3',
+      `UPDATE penalizaciones
+      SET pagado = $1,
+          estado = $2,
+          ultimo_pago_en = NOW()
+      WHERE id = $3`,
       [total_pagado, estado, id]
     );
     res.json({ mensaje: 'Pago registrado' });
@@ -243,8 +251,13 @@ router.get('/penalizaciones/lugar/:lugar_id', async (req, res) => {
   try {
     const { lugar_id } = req.params;
     const result = await pool.query(`
-      SELECT p.*, a.fecha,
-             u.nombre, u.apellido
+      SELECT
+        p.*,
+        a.fecha AS fecha_reserva,
+        p.creado_en AS fecha_creacion_penalizacion,
+        p.ultimo_pago_en AS fecha_ultimo_pago,
+        u.nombre,
+        u.apellido
       FROM penalizaciones p
       JOIN asistencia a ON p.asistencia_id = a.id
       JOIN usuarios u ON p.usuario_id = u.id
@@ -302,10 +315,16 @@ router.put('/saldos/:usuario_id/:lugar_id/pago', async (req, res) => {
       if (restante <= 0) break;
       const deuda = parseFloat(p.monto) - parseFloat(p.pagado);
       if (restante >= deuda) {
-        await pool.query('UPDATE penalizaciones SET pagado=$1, estado=$2 WHERE id=$3', [p.monto, 'pagado', p.id]);
+        await pool.query(
+          'UPDATE penalizaciones SET pagado=$1, estado=$2, ultimo_pago_en=NOW() WHERE id=$3',
+          [p.monto, 'pagado', p.id]
+        );
         restante -= deuda;
       } else {
-        await pool.query('UPDATE penalizaciones SET pagado=$1 WHERE id=$2', [parseFloat(p.pagado) + restante, p.id]);
+        await pool.query(
+          'UPDATE penalizaciones SET pagado=$1, ultimo_pago_en=NOW() WHERE id=$2',
+          [parseFloat(p.pagado) + restante, p.id]
+        );
         restante = 0;
       }
     }
