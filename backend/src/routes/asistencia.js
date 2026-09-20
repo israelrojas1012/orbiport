@@ -10,6 +10,64 @@ const pool = new Pool({
   password: process.env.DB_PASSWORD,
 });
 
+const obtenerAhoraEcuador = () => {
+  const partes = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Guayaquil',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hourCycle: 'h23'
+  }).formatToParts(new Date());
+
+  const get = tipo => Number(partes.find(p => p.type === tipo).value);
+
+  return new Date(Date.UTC(
+    get('year'),
+    get('month') - 1,
+    get('day'),
+    get('hour'),
+    get('minute'),
+    get('second')
+  ));
+};
+
+const crearFechaHoraEcuador = (fecha, hora) => {
+  const fechaStr = fecha instanceof Date
+    ? `${fecha.getUTCFullYear()}-${String(fecha.getUTCMonth() + 1).padStart(2, '0')}-${String(fecha.getUTCDate()).padStart(2, '0')}`
+    : String(fecha).slice(0, 10);
+
+  const [year, month, day] = fechaStr.split('-').map(Number);
+  const [hour, minute] = String(hora).slice(0, 5).split(':').map(Number);
+
+  if ([year, month, day, hour, minute].some(Number.isNaN)) {
+    return null;
+  }
+
+  return new Date(Date.UTC(
+    year,
+    month - 1,
+    day,
+    hour,
+    minute,
+    0
+  ));
+};
+
+const puedePasarLista = (fecha, hora_inicio) => {
+  const inicio = crearFechaHoraEcuador(fecha, hora_inicio);
+
+  if (!inicio) return false;
+
+  const limite = new Date(
+    obtenerAhoraEcuador().getTime() + 30 * 60 * 1000
+  );
+
+  return inicio <= limite;
+};
+
 // OBTENER RESERVAS DE UN HORARIO Y FECHA PARA PASAR LISTA
 router.get('/lista/:lugar_id/:fecha', async (req, res) => {
   try {
@@ -39,6 +97,31 @@ router.get('/lista/:lugar_id/:fecha', async (req, res) => {
 router.post('/marcar', async (req, res) => {
   try {
     const { reserva_id, usuario_id, lugar_id, fecha, asistio } = req.body;
+
+    const reserva = await pool.query(`
+      SELECT
+        r.fecha,
+        COALESCE(h.hora_inicio, e.hora_inicio) AS hora_inicio
+      FROM reservas r
+      LEFT JOIN horarios_plantilla h ON r.horario_id = h.id
+      LEFT JOIN horarios_excepciones e ON r.excepcion_id = e.id
+      WHERE r.id = $1
+    `, [reserva_id]);
+
+    if (reserva.rows.length === 0) {
+      return res.status(404).json({
+        error: 'Reserva no encontrada'
+      });
+    }
+
+    if (!puedePasarLista(
+      reserva.rows[0].fecha,
+      reserva.rows[0].hora_inicio
+    )) {
+      return res.status(400).json({
+        error: '⏰ Solo puedes pasar lista de horarios pasados o que comiencen dentro de los próximos 30 minutos'
+      });
+    }
 
     const existe = await pool.query('SELECT id FROM asistencia WHERE reserva_id = $1', [reserva_id]);
 
@@ -87,7 +170,11 @@ router.post('/todos', async (req, res) => {
   try {
     const { lugar_id, fecha } = req.body;
     const reservas = await pool.query(`
-      SELECT r.id as reserva_id, r.usuario_id
+      SELECT
+        r.id as reserva_id,
+        r.usuario_id,
+        r.fecha,
+        COALESCE(h.hora_inicio, e.hora_inicio) AS hora_inicio
       FROM reservas r
       LEFT JOIN horarios_plantilla h ON r.horario_id = h.id
       LEFT JOIN horarios_excepciones e ON r.excepcion_id = e.id
@@ -95,6 +182,9 @@ router.post('/todos', async (req, res) => {
     `, [lugar_id, fecha]);
 
     for (const r of reservas.rows) {
+      if (!puedePasarLista(r.fecha, r.hora_inicio)) {
+        continue;
+      }
       const existe = await pool.query('SELECT id FROM asistencia WHERE reserva_id = $1', [r.reserva_id]);
       if (existe.rows.length > 0) {
         await pool.query('UPDATE asistencia SET asistio = true WHERE reserva_id = $1', [r.reserva_id]);
@@ -255,7 +345,12 @@ router.get('/horarios-dia/:lugar_id/:fecha', async (req, res) => {
       ORDER BY e.hora_inicio ASC
     `, [lugar_id, fecha]);
 
-    res.json([...normales.rows, ...especiales.rows]);
+    const horariosValidos = [
+      ...normales.rows,
+      ...especiales.rows
+    ].filter(h => puedePasarLista(fecha, h.hora_inicio));
+
+    res.json(horariosValidos);
   } catch (err) {
     res.status(500).json({ error: 'Error al obtener horarios' });
   }
