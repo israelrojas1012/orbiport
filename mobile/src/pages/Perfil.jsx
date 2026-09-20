@@ -10,7 +10,29 @@ export default function Perfil() {
   const location = useLocation();
   const usuario = JSON.parse(localStorage.getItem('usuario') || '{}');
   const [editando, setEditando] = useState(false);
-  const [form, setForm] = useState({ nombre: usuario.nombre || '', apellido: usuario.apellido || '' });
+  const [form, setForm] = useState({
+    nombre: usuario.nombre || '',
+    apellido: usuario.apellido || '',
+    nickname: usuario.nickname || '',
+    avatar: usuario.avatar || 'avatar_01'
+  });
+  const avatares = [
+    { id: 'avatar_01', emoji: '😎' },
+    { id: 'avatar_02', emoji: '🤓' },
+    { id: 'avatar_03', emoji: '😊' },
+    { id: 'avatar_04', emoji: '😁' },
+    { id: 'avatar_05', emoji: '🧢' },
+    { id: 'avatar_06', emoji: '🎮' },
+    { id: 'avatar_07', emoji: '⚡' },
+    { id: 'avatar_08', emoji: '🔥' },
+    { id: 'avatar_09', emoji: '🐺' },
+    { id: 'avatar_10', emoji: '🦊' },
+    { id: 'avatar_11', emoji: '🐼' },
+    { id: 'avatar_12', emoji: '🦁' }
+  ];
+
+  const obtenerAvatar = id =>
+    avatares.find(a => a.id === id)?.emoji || '👤';
   const [passForm, setPassForm] = useState({ actual: '', nueva: '', confirmar: '' });
   const [editandoPass, setEditandoPass] = useState(false);
   const [mostrarActual, setMostrarActual] = useState(false);
@@ -40,13 +62,34 @@ export default function Perfil() {
 
   const guardarPerfil = async () => {
     try {
-      await API.put(`/usuarios/${usuario.id}`, form);
-      const actualizado = { ...usuario, ...form };
+      if (usuario.rol === 'cliente' && form.nickname.trim().length < 3) {
+        mostrarToast('El nickname debe tener mínimo 3 caracteres', 'error');
+        return;
+      }
+
+      const res = await API.put(`/usuarios/${usuario.id}`, form);
+
+      const actualizado = {
+        ...usuario,
+        ...res.data.usuario
+      };
+
       localStorage.setItem('usuario', JSON.stringify(actualizado));
+
+      setForm({
+        nombre: actualizado.nombre || '',
+        apellido: actualizado.apellido || '',
+        nickname: actualizado.nickname || '',
+        avatar: actualizado.avatar || 'avatar_01'
+      });
+
       setEditando(false);
       mostrarToast('Perfil actualizado correctamente');
     } catch (err) {
-      mostrarToast(err.response?.data?.error || 'Error al actualizar', 'error');
+      mostrarToast(
+        err.response?.data?.error || 'Error al actualizar',
+        'error'
+      );
     }
   };
 
@@ -222,9 +265,26 @@ export default function Perfil() {
         {/* Avatar y nombre */}
         <div style={styles.avatarSeccion}>
           <div style={styles.avatar}>
-            <span style={styles.avatarLetra}>{usuario.nombre?.charAt(0).toUpperCase()}</span>
+            <span style={{ fontSize: 46 }}>
+              {obtenerAvatar(usuario.avatar || 'avatar_01')}
+            </span>
           </div>
-          <h3 style={styles.nombre}>{usuario.nombre} {usuario.apellido}</h3>
+
+          <h3 style={styles.nombre}>
+            {usuario.rol === 'cliente' && usuario.nickname
+              ? `@${usuario.nickname}`
+              : `${usuario.nombre} ${usuario.apellido}`}
+          </h3>
+
+          {usuario.rol === 'cliente' && usuario.nickname && (
+            <p style={{
+              fontSize: 13,
+              color: 'var(--text-suave)',
+              marginTop: 2
+            }}>
+              {usuario.nombre} {usuario.apellido}
+            </p>
+          )}
           <div style={styles.rolBadge}>
             <span style={styles.rolIcon}>{usuario.rol === 'admin' ? '⚙️' : '👤'}</span>
             <span style={styles.rolTexto}>{usuario.rol === 'admin' ? 'Administrador' : 'Cliente'}</span>
@@ -295,39 +355,140 @@ export default function Perfil() {
 
           {editando ? (
             <div style={styles.formGroup}>
+
+              {/* NOMBRE */}
               <div style={styles.inputGroup}>
                 <label style={styles.label}>Nombre</label>
                 <input
                   style={styles.input}
                   placeholder="Tu nombre"
                   value={form.nombre}
-                  onChange={e => setForm({ ...form, nombre: e.target.value })}
+                  onChange={e =>
+                    setForm({ ...form, nombre: e.target.value })
+                  }
                 />
               </div>
+
+              {/* APELLIDO */}
               <div style={styles.inputGroup}>
                 <label style={styles.label}>Apellido</label>
                 <input
                   style={styles.input}
                   placeholder="Tu apellido"
                   value={form.apellido}
-                  onChange={e => setForm({ ...form, apellido: e.target.value })}
+                  onChange={e =>
+                    setForm({ ...form, apellido: e.target.value })
+                  }
                 />
               </div>
-              <div style={styles.infoBox}>
-                <p style={styles.infoBoxLabel}>Correo electrónico (no editable)</p>
-                <p style={styles.infoBoxValor}>{usuario.correo}</p>
+
+              {/* NICKNAME - SOLO CLIENTES */}
+              {usuario.rol === 'cliente' && (
+                <div style={styles.inputGroup}>
+                  <label style={styles.label}>Nickname</label>
+
+                  <input
+                    style={styles.input}
+                    placeholder="Ej: Biro"
+                    maxLength={30}
+                    value={form.nickname}
+                    onChange={e =>
+                      setForm({
+                        ...form,
+                        nickname: e.target.value.replace(/[^a-zA-Z0-9._]/g, '')
+                      })
+                    }
+                  />
+
+                  <p style={styles.hint}>
+                    Tu nombre público en Orbiport. Debe ser único.
+                  </p>
+                </div>
+              )}
+
+              {/* AVATAR - CLIENTES Y ADMINISTRADORES */}
+              <div style={styles.inputGroup}>
+                <label style={styles.label}>Avatar</label>
+
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(6, 1fr)',
+                    gap: 10,
+                    marginTop: 8
+                  }}
+                >
+                  {avatares.map(a => (
+                    <button
+                      key={a.id}
+                      type="button"
+                      onClick={() =>
+                        setForm({
+                          ...form,
+                          avatar: a.id
+                        })
+                      }
+                      style={{
+                        height: 54,
+                        borderRadius: 14,
+                        fontSize: 27,
+                        cursor: 'pointer',
+                        background:
+                          form.avatar === a.id
+                            ? 'var(--color-primario-suave)'
+                            : 'var(--bg-card)',
+                        border:
+                          form.avatar === a.id
+                            ? '2px solid var(--color-primario)'
+                            : '1px solid var(--border-suave)'
+                      }}
+                    >
+                      {a.emoji}
+                    </button>
+                  ))}
+                </div>
+
+                <p style={styles.hint}>
+                  Selecciona tu avatar de Orbiport.
+                </p>
               </div>
+
+              {/* CORREO */}
+              <div style={styles.infoBox}>
+                <p style={styles.infoBoxLabel}>
+                  Correo electrónico (no editable)
+                </p>
+                <p style={styles.infoBoxValor}>
+                  {usuario.correo}
+                </p>
+              </div>
+
+              {/* BOTONES */}
               <div style={styles.botonesRow}>
-                <button style={styles.btnGuardar} onClick={guardarPerfil}>
+                <button
+                  style={styles.btnGuardar}
+                  onClick={guardarPerfil}
+                >
                   Guardar cambios
                 </button>
+
                 <button
                   style={styles.btnCancelar}
-                  onClick={() => { setEditando(false); setForm({ nombre: usuario.nombre, apellido: usuario.apellido }); }}
+                  onClick={() => {
+                    setEditando(false);
+
+                    setForm({
+                      nombre: usuario.nombre || '',
+                      apellido: usuario.apellido || '',
+                      nickname: usuario.nickname || '',
+                      avatar: usuario.avatar || 'avatar_01'
+                    });
+                  }}
                 >
                   Cancelar
                 </button>
               </div>
+
             </div>
           ) : (
             <div style={styles.infoLista}>
@@ -338,6 +499,23 @@ export default function Perfil() {
               <div style={styles.infoRow}>
                 <span style={styles.infoLabel}>Apellido</span>
                 <span style={styles.infoValor}>{usuario.apellido}</span>
+              </div>
+              {usuario.rol === 'cliente' && (
+                <div style={styles.infoRow}>
+                  <span style={styles.infoLabel}>Nickname</span>
+                  <span style={styles.infoValor}>
+                    {usuario.nickname
+                      ? `@${usuario.nickname}`
+                      : 'Sin configurar'}
+                  </span>
+                </div>
+              )}
+              
+              <div style={styles.infoRow}>
+                <span style={styles.infoLabel}>Avatar</span>
+                <span style={{ fontSize: 26 }}>
+                  {obtenerAvatar(usuario.avatar || 'avatar_01')}
+                </span>
               </div>
               <div style={styles.infoRow}>
                 <span style={styles.infoLabel}>Correo</span>

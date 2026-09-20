@@ -16,14 +16,114 @@ const pool = new Pool({
 router.put('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { nombre, apellido } = req.body;
-    await pool.query(
-      'UPDATE usuarios SET nombre=$1, apellido=$2 WHERE id=$3',
-      [nombre, apellido, id]
+    const { nombre, apellido, nickname, avatar } = req.body;
+
+    const usuarioResult = await pool.query(
+      'SELECT rol FROM usuarios WHERE id = $1',
+      [id]
     );
-    res.json({ mensaje: 'Perfil actualizado' });
+
+    if (usuarioResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+
+    const rol = usuarioResult.rows[0].rol;
+
+    // Validar avatar
+    const avataresPermitidos = [
+      'avatar_01',
+      'avatar_02',
+      'avatar_03',
+      'avatar_04',
+      'avatar_05',
+      'avatar_06',
+      'avatar_07',
+      'avatar_08',
+      'avatar_09',
+      'avatar_10',
+      'avatar_11',
+      'avatar_12'
+    ];
+
+    if (avatar && !avataresPermitidos.includes(avatar)) {
+      return res.status(400).json({ error: 'Avatar no válido' });
+    }
+
+    // Los clientes pueden tener nickname
+    if (rol === 'cliente' && nickname) {
+      const nicknameLimpio = nickname.trim();
+
+      if (nicknameLimpio.length < 3 || nicknameLimpio.length > 30) {
+        return res.status(400).json({
+          error: 'El nickname debe tener entre 3 y 30 caracteres'
+        });
+      }
+
+      if (!/^[a-zA-Z0-9._]+$/.test(nicknameLimpio)) {
+        return res.status(400).json({
+          error: 'El nickname solo puede contener letras, números, punto y guion bajo'
+        });
+      }
+
+      const existe = await pool.query(
+        `SELECT id
+         FROM usuarios
+         WHERE LOWER(nickname) = LOWER($1)
+         AND id != $2`,
+        [nicknameLimpio, id]
+      );
+
+      if (existe.rows.length > 0) {
+        return res.status(409).json({
+          error: 'Ese nickname ya está en uso'
+        });
+      }
+
+      const result = await pool.query(
+        `UPDATE usuarios
+         SET nombre = $1,
+             apellido = $2,
+             nickname = $3,
+             avatar = $4
+         WHERE id = $5
+         RETURNING id, nombre, apellido, correo, rol, nickname, avatar`,
+        [nombre, apellido, nicknameLimpio, avatar || null, id]
+      );
+
+      return res.json({
+        mensaje: 'Perfil actualizado',
+        usuario: result.rows[0]
+      });
+    }
+
+    // Administradores: avatar sí, nickname no
+    const result = await pool.query(
+      `UPDATE usuarios
+       SET nombre = $1,
+           apellido = $2,
+           avatar = $3
+       WHERE id = $4
+       RETURNING id, nombre, apellido, correo, rol, nickname, avatar`,
+      [nombre, apellido, avatar || null, id]
+    );
+
+    res.json({
+      mensaje: 'Perfil actualizado',
+      usuario: result.rows[0]
+    });
+
   } catch (err) {
-    res.status(500).json({ error: 'Error al actualizar perfil' });
+    console.error(err);
+
+    if (err.code === '23505') {
+      return res.status(409).json({
+        error: 'Ese nickname ya está en uso'
+      });
+    }
+
+    res.status(500).json({
+      error: 'Error al actualizar perfil'
+    });
   }
 });
 
@@ -32,20 +132,31 @@ router.put('/:id/password', async (req, res) => {
   try {
     const { id } = req.params;
     const { actual, nueva } = req.body;
-    if (!actual || !nueva) return res.status(400).json({ error: 'Completa todos los campos' });
+    if (!actual || !nueva) {
+      return res.status(400).json({ error: 'Completa todos los campos' });
+    }
     const contrasenaRegex = /^(?=.*[a-zA-Z])(?=.*[0-9]).{6,}$/;
     if (!contrasenaRegex.test(nueva)) {
-      return res.status(400).json({ error: 'La nueva contrasena debe tener letras y numeros, minimo 6 caracteres' });
+      return res.status(400).json({
+        error: 'La nueva contrasena debe tener letras y numeros, minimo 6 caracteres'
+      });
     }
     const result = await pool.query(
       'SELECT contrasena, correo, nombre FROM usuarios WHERE id=$1',
       [id]
     );
-    if (result.rows.length === 0) return res.status(404).json({ error: 'Usuario no encontrado' });
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
     const valido = await bcrypt.compare(actual, result.rows[0].contrasena);
-    if (!valido) return res.status(400).json({ error: 'La contraseña actual es incorrecta' });
+    if (!valido) {
+      return res.status(400).json({ error: 'La contraseña actual es incorrecta' });
+    }
     const hash = await bcrypt.hash(nueva, 10);
-    await pool.query('UPDATE usuarios SET contrasena=$1 WHERE id=$2', [hash, id]);
+    await pool.query(
+      'UPDATE usuarios SET contrasena=$1 WHERE id=$2',
+      [hash, id]
+    );
     await enviarEmail(
       result.rows[0].correo,
       'Contraseña actualizada - Orbiport',
@@ -62,6 +173,7 @@ router.put('/:id/password', async (req, res) => {
     );
     res.json({ mensaje: 'Contrasena actualizada' });
   } catch (err) {
+    console.error(err);
     res.status(500).json({ error: 'Error al cambiar contrasena' });
   }
 });
