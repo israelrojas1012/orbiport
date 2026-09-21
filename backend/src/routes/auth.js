@@ -191,7 +191,9 @@ router.post('/login', async (req, res) => {
     );
 
     if (result.rows.length === 0) {
-      return res.status(400).json({ error: 'Correo o contrasena incorrectos' });
+      return res.status(404).json({
+        error: 'No existe una cuenta registrada con este correo'
+      });
     }
 
     const usuario = result.rows[0];
@@ -199,7 +201,9 @@ router.post('/login', async (req, res) => {
     const valido = await bcrypt.compare(contrasena, usuario.contrasena);
 
     if (!valido) {
-      return res.status(400).json({ error: 'Correo o contrasena incorrectos' });
+      return res.status(400).json({
+        error: 'Contraseña incorrecta'
+      });
     }
 
     if (!usuario.verificado) {

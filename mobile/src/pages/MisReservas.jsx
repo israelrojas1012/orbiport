@@ -354,9 +354,9 @@ export default function MisReservas() {
             <span style={styles.tabIcon}>📅</span>
             <span>Mis Reservas</span>
 
-            {reservas.length > 0 && (
+            {reservas.filter(r => !estaPasada(r)).length > 0 && (
               <span style={styles.tabBadge}>
-                {reservas.length}
+                {reservas.filter(r => !estaPasada(r)).length}
               </span>
             )}
           </button>
