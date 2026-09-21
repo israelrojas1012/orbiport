@@ -8,13 +8,17 @@ const HORARIO_VACIO = {
   hora_inicio: '',
   hora_fin: '',
   cupos: '',
-  tipo_cancha: ''
+  tipo_cancha: '',
+  instructor: '',
+  descripcion: ''
 };
 
 const ESPECIAL_VACIO = {
   hora_inicio: '',
   hora_fin: '',
-  cupos: ''
+  cupos: '',
+  instructor: '',
+  descripcion: ''
 };
 
 const formatHora = hora => {
@@ -324,7 +328,9 @@ export default function AdminHorarios({
       hora_inicio: h.hora_inicio.slice(0, 5),
       hora_fin: h.hora_fin.slice(0, 5),
       cupos: h.cupos,
-      tipo_cancha: h.tipo_cancha || ''
+      tipo_cancha: h.tipo_cancha || '',
+      instructor: h.instructor || '',
+      descripcion: h.descripcion || ''
     });
   };
 
@@ -333,7 +339,9 @@ export default function AdminHorarios({
     setEditFormEspecial({
       hora_inicio: h.hora_inicio.slice(0, 5),
       hora_fin: h.hora_fin.slice(0, 5),
-      cupos: h.cupos
+      cupos: h.cupos,
+      instructor: h.instructor || '',
+      descripcion: h.descripcion || ''
     });
   };
 
@@ -403,8 +411,51 @@ export default function AdminHorarios({
                       placeholder="Cupos"
                       styles={styles}
                     />
-                    <button style={styles.btnGuardarSmall} onClick={guardarEdicionEspecial}>OK</button>
-                    <button style={styles.btnCancelarSmall} onClick={() => setHorarioEspecialEditando(null)}>X</button>
+
+                    <input
+                      style={styles.inputSmall}
+                      type="text"
+                      maxLength={100}
+                      placeholder="Instructor (opcional)"
+                      value={editFormEspecial.instructor || ''}
+                      onChange={e =>
+                        setEditFormEspecial({
+                          ...editFormEspecial,
+                          instructor: e.target.value
+                        })
+                      }
+                    />
+
+                    <textarea
+                      style={{
+                        ...styles.inputSmall,
+                        minHeight: 60,
+                        resize: 'vertical'
+                      }}
+                      maxLength={300}
+                      placeholder="Descripción (opcional)"
+                      value={editFormEspecial.descripcion || ''}
+                      onChange={e =>
+                        setEditFormEspecial({
+                          ...editFormEspecial,
+                          descripcion: e.target.value
+                        })
+                      }
+                    />
+
+                    <button
+                      style={styles.btnGuardarSmall}
+                      onClick={guardarEdicionEspecial}
+                    >
+                      OK
+                    </button>
+
+                    <button
+                      style={styles.btnCancelarSmall}
+                      onClick={() => setHorarioEspecialEditando(null)}
+                    >
+                      X
+                    </button>
                   </>
                 ) : (
                   <>
@@ -412,6 +463,23 @@ export default function AdminHorarios({
                       {formatHora(h.hora_inicio)} - {formatHora(h.hora_fin)}
                     </span>
                     <span style={styles.cuposTexto}>👥 {h.cupos} cupos</span>
+                    {h.instructor && (
+                      <span style={{
+                        fontSize: 12,
+                        color: 'var(--text-secundario)'
+                      }}>
+                        👤 {h.instructor}
+                      </span>
+                    )}
+
+                    {h.descripcion && (
+                      <span style={{
+                        fontSize: 12,
+                        color: 'var(--text-suave)'
+                      }}>
+                        📝 {h.descripcion}
+                      </span>
+                    )}
                     <button style={styles.btnEditarHorario} onClick={() => iniciarEdicionEspecial(h)}>Editar</button>
                     <button style={styles.btnEliminarHorario} onClick={() => eliminarHorarioEspecial(h.id)}>Eliminar</button>
                   </>
@@ -618,6 +686,37 @@ export default function AdminHorarios({
                             />
                           )}
 
+                          <input
+                            style={styles.inputSmall}
+                            type="text"
+                            maxLength={100}
+                            placeholder="Instructor (opcional)"
+                            value={editForm.instructor || ''}
+                            onChange={e =>
+                              setEditForm({
+                                ...editForm,
+                                instructor: e.target.value
+                              })
+                            }
+                          />
+
+                          <textarea
+                            style={{
+                              ...styles.inputSmall,
+                              minHeight: 60,
+                              resize: 'vertical'
+                            }}
+                            maxLength={300}
+                            placeholder="Descripción (opcional)"
+                            value={editForm.descripcion || ''}
+                            onChange={e =>
+                              setEditForm({
+                                ...editForm,
+                                descripcion: e.target.value
+                              })
+                            }
+                          />
+
                           <button
                             style={styles.btnGuardarSmall}
                             onClick={guardarEdicion}
@@ -644,6 +743,28 @@ export default function AdminHorarios({
                               ? `cancha(s) ${h.tipo_cancha || ''}`
                               : 'cupos totales'}
                           </span>
+
+                          {h.instructor && (
+                            <span
+                              style={{
+                                fontSize: 12,
+                                color: 'var(--text-secundario)'
+                              }}
+                            >
+                              👤 {h.instructor}
+                            </span>
+                          )}
+
+                          {h.descripcion && (
+                            <span
+                              style={{
+                                fontSize: 12,
+                                color: 'var(--text-suave)'
+                              }}
+                            >
+                              📝 {h.descripcion}
+                            </span>
+                          )}
 
                           <button
                             style={styles.btnEditarHorario}
@@ -708,6 +829,37 @@ export default function AdminHorarios({
                       styles={styles}
                     />
                   </div>
+
+                  <input
+                    style={styles.input}
+                    type="text"
+                    maxLength={100}
+                    placeholder="Instructor (opcional)"
+                    value={nuevoHorario.instructor}
+                    onChange={e =>
+                      setNuevoHorario({
+                        ...nuevoHorario,
+                        instructor: e.target.value
+                      })
+                    }
+                  />
+
+                  <textarea
+                    style={{
+                      ...styles.input,
+                      minHeight: 70,
+                      resize: 'vertical'
+                    }}
+                    maxLength={300}
+                    placeholder="Descripción de la clase (opcional)"
+                    value={nuevoHorario.descripcion}
+                    onChange={e =>
+                      setNuevoHorario({
+                        ...nuevoHorario,
+                        descripcion: e.target.value
+                      })
+                    }
+                  />
 
                   {lugar.categoria === 'canchas' && (
                     <select
@@ -809,6 +961,30 @@ export default function AdminHorarios({
                       onChange={v => actualizarHorarioEspecial(i, 'cupos', v)}
                       placeholder="Cupos"
                       styles={styles}
+                    />
+                    <input
+                      style={styles.inputSmall}
+                      type="text"
+                      maxLength={100}
+                      placeholder="Instructor (opcional)"
+                      value={h.instructor || ''}
+                      onChange={e =>
+                        actualizarHorarioEspecial(i, 'instructor', e.target.value)
+                      }
+                    />
+
+                    <textarea
+                      style={{
+                        ...styles.inputSmall,
+                        minHeight: 60,
+                        resize: 'vertical'
+                      }}
+                      maxLength={300}
+                      placeholder="Descripción (opcional)"
+                      value={h.descripcion || ''}
+                      onChange={e =>
+                        actualizarHorarioEspecial(i, 'descripcion', e.target.value)
+                      }
                     />
 
                     {horariosEspeciales.length > 1 && (

@@ -341,7 +341,16 @@ router.get('/horarios/:lugar_id', async (req, res) => {
 
 router.post('/horarios', async (req, res) => {
   try {
-    const { lugar_id, dia, hora_inicio, hora_fin, cupos, tipo_cancha } = req.body;
+    const {
+      lugar_id,
+      dia,
+      hora_inicio,
+      hora_fin,
+      cupos,
+      tipo_cancha,
+      instructor,
+      descripcion
+    } = req.body;
     if (!validarTiempoMinimo(dia, hora_inicio)) {
       return res.status(400).json({
         error: 'No puedes crear un horario con menos de 24 horas de anticipación'
@@ -365,10 +374,19 @@ router.post('/horarios', async (req, res) => {
     }
     const result = await pool.query(
       `INSERT INTO horarios_plantilla
-      (lugar_id, dia, hora_inicio, hora_fin, cupos, tipo_cancha, activo)
-      VALUES ($1, $2, $3, $4, $5, $6, true)
+      (lugar_id, dia, hora_inicio, hora_fin, cupos, tipo_cancha, instructor, descripcion, activo)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true)
       RETURNING *`,
-      [lugar_id, dia, hora_inicio, hora_fin, cupos, tipo_cancha || null]
+      [
+        lugar_id,
+        dia,
+        hora_inicio,
+        hora_fin,
+        cupos,
+        tipo_cancha || null,
+        instructor?.trim() || null,
+        descripcion?.trim() || null
+      ]
     );
     res.status(201).json(result.rows[0]);
   } catch (err) {
@@ -379,7 +397,16 @@ router.post('/horarios', async (req, res) => {
 router.put('/horarios/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { hora_inicio, hora_fin, cupos, activo, dia, tipo_cancha } = req.body;
+    const {
+      hora_inicio,
+      hora_fin,
+      cupos,
+      activo,
+      dia,
+      tipo_cancha,
+      instructor,
+      descripcion
+    } = req.body;
 
     if (!validarTiempoMinimo(dia, hora_inicio)) {
       return res.status(400).json({
@@ -460,13 +487,24 @@ router.put('/horarios/:id', async (req, res) => {
 
     await pool.query(
       `UPDATE horarios_plantilla
-       SET hora_inicio=$1,
-           hora_fin=$2,
-           cupos=$3,
-           activo=$4,
-           tipo_cancha=$5
-       WHERE id=$6`,
-      [hora_inicio, hora_fin, cupos, activo, tipo_cancha || null, id]
+      SET hora_inicio=$1,
+          hora_fin=$2,
+          cupos=$3,
+          activo=$4,
+          tipo_cancha=$5,
+          instructor=$6,
+          descripcion=$7
+      WHERE id=$8`,
+      [
+        hora_inicio,
+        hora_fin,
+        cupos,
+        activo,
+        tipo_cancha || null,
+        instructor?.trim() || null,
+        descripcion?.trim() || null,
+        id
+      ]
     );
 
     res.json({ mensaje: 'Horario actualizado' });
@@ -544,9 +582,18 @@ router.post('/horarios/copiar', async (req, res) => {
         } else {
           await pool.query(
             `INSERT INTO horarios_plantilla
-            (lugar_id, dia, hora_inicio, hora_fin, cupos, tipo_cancha, activo)
-            VALUES ($1,$2,$3,$4,$5,$6,true)`,
-            [lugar_id, dia, h.hora_inicio, h.hora_fin, h.cupos, h.tipo_cancha || null]
+            (lugar_id, dia, hora_inicio, hora_fin, cupos, tipo_cancha, instructor, descripcion, activo)
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,true)`,
+            [
+              lugar_id,
+              dia,
+              h.hora_inicio,
+              h.hora_fin,
+              h.cupos,
+              h.tipo_cancha || null,
+              h.instructor || null,
+              h.descripcion || null
+            ]
           );
           copiados.push(dia);
         }
@@ -615,8 +662,19 @@ router.post('/excepciones', async (req, res) => {
       }
       for (const h of horarios) {
         await pool.query(
-          'INSERT INTO horarios_excepciones (lugar_id, fecha, hora_inicio, hora_fin, cupos, cerrado, motivo) VALUES ($1, $2, $3, $4, $5, false, $6)',
-          [lugar_id, fecha, h.hora_inicio, h.hora_fin, h.cupos, motivo]
+          `INSERT INTO horarios_excepciones
+          (lugar_id, fecha, hora_inicio, hora_fin, cupos, cerrado, motivo, instructor, descripcion)
+          VALUES ($1, $2, $3, $4, $5, false, $6, $7, $8)`,
+          [
+            lugar_id,
+            fecha,
+            h.hora_inicio,
+            h.hora_fin,
+            h.cupos,
+            motivo,
+            h.instructor?.trim() || null,
+            h.descripcion?.trim() || null
+          ]
         );
       }
     } else {
@@ -721,7 +779,13 @@ router.delete('/excepciones/:lugar_id/:fecha', async (req, res) => {
 router.put('/excepcion/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { hora_inicio, hora_fin, cupos } = req.body;
+    const {
+      hora_inicio,
+      hora_fin,
+      cupos,
+      instructor,
+      descripcion
+    } = req.body;
 
     if (hora_fin <= hora_inicio) {
       return res.status(400).json({
@@ -756,9 +820,20 @@ router.put('/excepcion/:id', async (req, res) => {
 
     await pool.query(
       `UPDATE horarios_excepciones
-       SET hora_inicio=$1, hora_fin=$2, cupos=$3
-       WHERE id=$4`,
-      [hora_inicio, hora_fin, cupos, id]
+      SET hora_inicio=$1,
+          hora_fin=$2,
+          cupos=$3,
+          instructor=$4,
+          descripcion=$5
+      WHERE id=$6`,
+      [
+        hora_inicio,
+        hora_fin,
+        cupos,
+        instructor?.trim() || null,
+        descripcion?.trim() || null,
+        id
+      ]
     );
 
     res.json({

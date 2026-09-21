@@ -695,7 +695,9 @@ export default function DetalleLugar() {
                   dia,
                   esExcepcion: true,
                   excepcion_id: e.id,
-                  tipo_cancha: e.tipo_cancha
+                  tipo_cancha: e.tipo_cancha,
+                  instructor: e.instructor || '',
+                  descripcion: e.descripcion || ''
                 }))
               : horariosNormales;
             const motivo = excs[0]?.motivo;
@@ -768,6 +770,40 @@ export default function DetalleLugar() {
                                   <span style={styles.tipoCanchaBadge}>🏟️ {h.tipo_cancha}</span>
                                 )}
                               </div>
+                              {(h.instructor || h.descripcion) && (
+                                <div
+                                  style={{
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: 4,
+                                    marginTop: 8
+                                  }}
+                                >
+                                  {h.instructor && (
+                                    <span
+                                      style={{
+                                        fontSize: 12,
+                                        color: 'var(--text-secundario)',
+                                        fontWeight: 600
+                                      }}
+                                    >
+                                      👤 Instructor: {h.instructor}
+                                    </span>
+                                  )}
+
+                                  {h.descripcion && (
+                                    <span
+                                      style={{
+                                        fontSize: 12,
+                                        color: 'var(--text-suave)',
+                                        lineHeight: 1.4
+                                      }}
+                                    >
+                                      📝 {h.descripcion}
+                                    </span>
+                                  )}
+                                </div>
+                              )}
                             </div>
 
                             <div style={styles.horarioBotones}>
