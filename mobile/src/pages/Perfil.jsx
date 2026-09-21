@@ -40,6 +40,7 @@ export default function Perfil() {
   const [mostrarConfirmar, setMostrarConfirmar] = useState(false);
   const [toast, setToast] = useState(null);
   const [saldo, setSaldo] = useState(null);
+  const [membresias, setMembresias] = useState([]);
   const [historialPagos, setHistorialPagos] = useState([]);
   const [mostrarHistorial, setMostrarHistorial] = useState(false);
   const [cargandoHistorial, setCargandoHistorial] = useState(false);
@@ -53,10 +54,24 @@ export default function Perfil() {
       .then(res => setSaldo(res.data))
       .catch(() => {});
 
+    if (usuario.rol === 'cliente') {
+      API.get(`/admin/membresias/usuario/${usuario.id}`)
+        .then(res => setMembresias(res.data))
+        .catch(() => {});
+    }
+
     API.get(`/notificaciones/${usuario.id}`)
       .then(res => setNotificaciones(res.data))
       .catch(() => {});
   }, []);
+  const formatearFechaMembresia = fecha => {
+    if (!fecha) return null;
+
+    const fechaTexto = String(fecha).slice(0, 10);
+    const [year, month, day] = fechaTexto.split('-');
+
+    return `${day}/${month}/${year}`;
+  };
 
   const mostrarToast = (msg, tipo = 'exito') => {
     setToast({ msg, tipo });
@@ -386,6 +401,74 @@ export default function Perfil() {
               </div>
             )}
             <p style={styles.saldoNota}>Contacta al administrador de cada lugar para pagar</p>
+          </div>
+        )}
+
+        {/* Membresías */}
+        {usuario.rol === 'cliente' && membresias.length > 0 && (
+          <div style={styles.card}>
+            <div style={styles.cardHeader}>
+              <div>
+                <p style={styles.cardTitulo}>
+                  🎟 Membresía
+                </p>
+
+                <p style={styles.cardSubtitulo}>
+                  Tus membresías activas
+                </p>
+              </div>
+            </div>
+
+            <div style={{ marginTop: 8 }}>
+              {membresias.map((m, index) => (
+                <div
+                  key={m.id}
+                  style={{
+                    padding: '14px 0',
+                    borderBottom:
+                      index < membresias.length - 1
+                        ? '1px solid var(--border-suave)'
+                        : 'none'
+                  }}
+                >
+                  <p
+                    style={{
+                      fontWeight: 700,
+                      color: 'var(--text-principal)',
+                      margin: '0 0 8px'
+                    }}
+                  >
+                    🏋️ {m.lugar_nombre}
+                  </p>
+
+                  {m.membresia_hasta && (
+                    <p
+                      style={{
+                        color: 'var(--text-suave)',
+                        margin: '4px 0',
+                        fontSize: 14
+                      }}
+                    >
+                      <strong>Vigencia:</strong>{' '}
+                      Hasta el {formatearFechaMembresia(m.membresia_hasta)}
+                    </p>
+                  )}
+
+                  {m.limite_reservas !== null && (
+                    <p
+                      style={{
+                        color: 'var(--text-suave)',
+                        margin: '4px 0',
+                        fontSize: 14
+                      }}
+                    >
+                      <strong>Reservas disponibles:</strong>{' '}
+                      {m.reservas_disponibles} de {m.limite_reservas}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
         )}
 

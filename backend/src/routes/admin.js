@@ -117,8 +117,17 @@ router.get('/inscripciones/:lugar_id', async (req, res) => {
   try {
     const { lugar_id } = req.params;
     const result = await pool.query(`
-      SELECT i.id, i.usuario_id, i.estado, i.creado_en,
-             u.nombre, u.apellido, u.correo, u.nickname, u.avatar
+      SELECT i.id,
+              i.usuario_id,
+              i.estado,
+              i.creado_en,
+              i.membresia_hasta,
+              i.limite_reservas,
+              u.nombre,
+              u.apellido,
+              u.correo,
+              u.nickname,
+              u.avatar
       FROM inscripciones i
       JOIN usuarios u ON i.usuario_id = u.id
       WHERE i.lugar_id = $1
@@ -127,6 +136,69 @@ router.get('/inscripciones/:lugar_id', async (req, res) => {
     res.json(result.rows);
   } catch (err) {
     res.status(500).json({ error: 'Error al obtener inscripciones' });
+  }
+});
+
+// GESTIONAR MEMBRESIA DE UN CLIENTE
+router.put('/inscripciones/:id/membresia', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      membresia_hasta,
+      limite_reservas
+    } = req.body;
+
+    if (
+      limite_reservas !== null &&
+      limite_reservas !== undefined &&
+      limite_reservas !== '' &&
+      (!Number.isInteger(Number(limite_reservas)) || Number(limite_reservas) < 0)
+    ) {
+      return res.status(400).json({
+        error: 'El límite de reservas debe ser un número entero mayor o igual a 0'
+      });
+    }
+
+    const inscripcion = await pool.query(
+      `SELECT id
+       FROM inscripciones
+       WHERE id = $1`,
+      [id]
+    );
+
+    if (inscripcion.rows.length === 0) {
+      return res.status(404).json({
+        error: 'Inscripción no encontrada'
+      });
+    }
+
+    await pool.query(
+      `UPDATE inscripciones
+      SET membresia_hasta = $1,
+          limite_reservas = $2,
+          membresia_inicio = NOW()
+      WHERE id = $3`,
+      [
+        membresia_hasta || null,
+        limite_reservas === '' ||
+        limite_reservas === null ||
+        limite_reservas === undefined
+          ? null
+          : Number(limite_reservas),
+        id
+      ]
+    );
+
+    res.json({
+      mensaje: 'Membresía actualizada correctamente'
+    });
+
+  } catch (err) {
+    console.error('Error al actualizar membresía:', err);
+
+    res.status(500).json({
+      error: 'Error al actualizar membresía'
+    });
   }
 });
 
@@ -283,6 +355,86 @@ router.delete('/inscripciones/:id', async (req, res) => {
     });
   } finally {
     client.release();
+  }
+});
+
+// MEMBRESIAS DE UN CLIENTE
+router.get('/membresias/usuario/:usuario_id', async (req, res) => {
+  try {
+    const { usuario_id } = req.params;
+
+    const result = await pool.query(
+      `SELECT
+         i.id,
+         i.lugar_id,
+         l.nombre AS lugar_nombre,
+         i.membresia_hasta,
+         i.limite_reservas,
+         i.membresia_inicio,
+         COUNT(r.id) FILTER (
+           WHERE
+             i.membresia_inicio IS NULL
+             OR r.creado_en >= i.membresia_inicio
+         ) AS reservas_usadas
+       FROM inscripciones i
+       JOIN lugares l
+         ON l.id = i.lugar_id
+       LEFT JOIN reservas r
+         ON r.usuario_id = i.usuario_id
+        AND (
+          r.horario_id IN (
+            SELECT id
+            FROM horarios_plantilla
+            WHERE lugar_id = i.lugar_id
+          )
+          OR
+          r.excepcion_id IN (
+            SELECT id
+            FROM horarios_excepciones
+            WHERE lugar_id = i.lugar_id
+          )
+        )
+       WHERE i.usuario_id = $1
+         AND i.estado = 'aprobada'
+         AND (
+           i.membresia_hasta IS NOT NULL
+           OR i.limite_reservas IS NOT NULL
+         )
+       GROUP BY
+         i.id,
+         i.lugar_id,
+         l.nombre,
+         i.membresia_hasta,
+         i.limite_reservas,
+         i.membresia_inicio
+       ORDER BY l.nombre ASC`,
+      [usuario_id]
+    );
+
+    const membresias = result.rows.map(m => {
+      const usadas = Number(m.reservas_usadas || 0);
+
+      const limite = m.limite_reservas === null
+        ? null
+        : Number(m.limite_reservas);
+
+      return {
+        ...m,
+        reservas_usadas: usadas,
+        reservas_disponibles:
+          limite === null
+            ? null
+            : Math.max(limite - usadas, 0)
+      };
+    });
+
+    res.json(membresias);
+  } catch (err) {
+    console.error('Error al obtener membresías:', err);
+
+    res.status(500).json({
+      error: 'Error al obtener membresías'
+    });
   }
 });
 

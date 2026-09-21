@@ -24,6 +24,8 @@ const AdminInscripciones = ({ lugar, mostrarMensaje, styles }) => {
   const [confirmarEliminar, setConfirmarEliminar] = useState(null);
   const [historialPagos, setHistorialPagos] = useState(null);
   const [cargandoHistorial, setCargandoHistorial] = useState(false);
+  const [gestionarMembresia, setGestionarMembresia] = useState(null);
+  const [guardandoMembresia, setGuardandoMembresia] = useState(false);
 
   const cargarInscripciones = async () => {
     if (!lugar?.id) return;
@@ -140,6 +142,57 @@ const AdminInscripciones = ({ lugar, mostrarMensaje, styles }) => {
   };
 
   const filtrados = inscripciones.filter(i => {
+    const abrirGestionMembresia = inscripcion => {
+      let fecha = '';
+
+      if (inscripcion.membresia_hasta) {
+        fecha = String(inscripcion.membresia_hasta).slice(0, 10);
+      }
+
+      setGestionarMembresia({
+        ...inscripcion,
+        membresia_hasta: fecha,
+        limite_reservas:
+          inscripcion.limite_reservas === null ||
+          inscripcion.limite_reservas === undefined
+            ? ''
+            : String(inscripcion.limite_reservas)
+      });
+    };
+
+    const guardarMembresia = async () => {
+      if (!gestionarMembresia) return;
+
+      try {
+        setGuardandoMembresia(true);
+
+        await API.put(
+          `/admin/inscripciones/${gestionarMembresia.id}/membresia`,
+          {
+            membresia_hasta:
+              gestionarMembresia.membresia_hasta || null,
+
+            limite_reservas:
+              gestionarMembresia.limite_reservas === ''
+                ? null
+                : Number(gestionarMembresia.limite_reservas)
+          }
+        );
+
+        await cargarInscripciones();
+
+        setGestionarMembresia(null);
+
+        mostrarMensaje('Membresía actualizada correctamente');
+      } catch (err) {
+        mostrarMensaje(
+          err.response?.data?.error ||
+          'Error al actualizar membresía'
+        );
+      } finally {
+        setGuardandoMembresia(false);
+      }
+    };
     if (!busqueda.trim()) return true;
 
     const q = busqueda.toLowerCase();
@@ -154,6 +207,141 @@ const AdminInscripciones = ({ lugar, mostrarMensaje, styles }) => {
 
   return (
     <div style={styles.tabContent}>
+      {gestionarMembresia && (
+        <div style={styles.modalOverlay}>
+          <div
+            style={{
+              ...styles.modal,
+              maxWidth: 500
+            }}
+          >
+            <p style={styles.cardTitulo}>
+              🎟 Gestionar membresía
+            </p>
+
+            <p style={styles.cardSub}>
+              {gestionarMembresia.nickname
+                ? `@${gestionarMembresia.nickname}`
+                : `${gestionarMembresia.nombre} ${gestionarMembresia.apellido}`}
+              {' · '}
+              {lugar.nombre}
+            </p>
+
+            <div style={{ marginTop: 20 }}>
+              <label
+                style={{
+                  display: 'block',
+                  marginBottom: 6,
+                  color: 'var(--text-principal)',
+                  fontWeight: 600
+                }}
+              >
+                Fecha límite de membresía
+              </label>
+
+              <input
+                type="date"
+                value={gestionarMembresia.membresia_hasta}
+                onChange={e =>
+                  setGestionarMembresia(prev => ({
+                    ...prev,
+                    membresia_hasta: e.target.value
+                  }))
+                }
+                style={{
+                  width: '100%',
+                  boxSizing: 'border-box',
+                  padding: 12,
+                  borderRadius: 10,
+                  border: '1px solid var(--border-suave)',
+                  background: 'var(--bg-card)',
+                  color: 'var(--text-principal)'
+                }}
+              />
+
+              <p
+                style={{
+                  ...styles.cardSub,
+                  marginTop: 6
+                }}
+              >
+                Déjalo vacío si la membresía no tiene fecha límite.
+              </p>
+            </div>
+
+            <div style={{ marginTop: 18 }}>
+              <label
+                style={{
+                  display: 'block',
+                  marginBottom: 6,
+                  color: 'var(--text-principal)',
+                  fontWeight: 600
+                }}
+              >
+                Límite de reservas
+              </label>
+
+              <input
+                type="number"
+                min="0"
+                step="1"
+                placeholder="Ej: 14"
+                value={gestionarMembresia.limite_reservas}
+                onChange={e =>
+                  setGestionarMembresia(prev => ({
+                    ...prev,
+                    limite_reservas: e.target.value
+                  }))
+                }
+                style={{
+                  width: '100%',
+                  boxSizing: 'border-box',
+                  padding: 12,
+                  borderRadius: 10,
+                  border: '1px solid var(--border-suave)',
+                  background: 'var(--bg-card)',
+                  color: 'var(--text-principal)'
+                }}
+              />
+
+              <p
+                style={{
+                  ...styles.cardSub,
+                  marginTop: 6
+                }}
+              >
+                Ejemplo: 14 permite realizar hasta 14 reservas.
+                Las reservas canceladas no consumirán el límite.
+              </p>
+            </div>
+
+            <div
+              style={{
+                ...styles.botonesRow,
+                marginTop: 22
+              }}
+            >
+              <button
+                style={styles.btnAprobar}
+                onClick={guardarMembresia}
+                disabled={guardandoMembresia}
+              >
+                {guardandoMembresia
+                  ? 'Guardando...'
+                  : 'Guardar membresía'}
+              </button>
+
+              <button
+                style={styles.btnCancelar}
+                onClick={() => setGestionarMembresia(null)}
+                disabled={guardandoMembresia}
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {confirmarEliminar && (
         <div style={styles.modalOverlay}>
           <div style={styles.modal}>
@@ -458,6 +646,13 @@ const AdminInscripciones = ({ lugar, mostrarMensaje, styles }) => {
                   disabled={cargandoHistorial}
                 >
                   🧾 Historial de pagos
+                </button>
+
+                <button
+                  style={styles.btnAprobar}
+                  onClick={() => abrirGestionMembresia(i)}
+                >
+                  🎟 Gestionar membresía
                 </button>
 
                 <button

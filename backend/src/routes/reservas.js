@@ -138,10 +138,10 @@ router.post('/', async (req, res) => {
     }
 
     const horario = await client.query(
-      `SELECT cupos, hora_inicio, hora_fin
-       FROM ${tabla}
-       WHERE id = $1
-       FOR UPDATE`,
+      `SELECT cupos, hora_inicio, hora_fin, lugar_id
+      FROM ${tabla}
+      WHERE id = $1
+      FOR UPDATE`,
       [id]
     );
 
@@ -157,8 +157,88 @@ router.post('/', async (req, res) => {
     const {
       cupos,
       hora_inicio,
-      hora_fin
+      hora_fin,
+      lugar_id
     } = horario.rows[0];
+
+    // ============================================
+    // VALIDAR MEMBRESIA DEL CLIENTE EN ESTE LUGAR
+    // ============================================
+    const membresia = await client.query(
+      `SELECT id,
+              estado,
+              membresia_hasta,
+              limite_reservas,
+              membresia_inicio
+      FROM inscripciones
+      WHERE usuario_id = $1
+        AND lugar_id = $2
+      FOR UPDATE`,
+      [usuario_id, lugar_id]
+    );
+
+    if (
+      membresia.rows.length === 0 ||
+      membresia.rows[0].estado !== 'aprobada'
+    ) {
+      await client.query('ROLLBACK');
+
+      return res.status(403).json({
+        error: '⚠️ No tienes una inscripción aprobada en este lugar'
+      });
+    }
+
+    const datosMembresia = membresia.rows[0];
+
+    // VALIDAR FECHA DE VIGENCIA
+    if (datosMembresia.membresia_hasta) {
+      const fechaReserva = String(fecha).slice(0, 10);
+      const fechaLimite = datosMembresia.membresia_hasta instanceof Date
+        ? datosMembresia.membresia_hasta.toISOString().slice(0, 10)
+        : String(datosMembresia.membresia_hasta).slice(0, 10);
+
+      if (fechaReserva > fechaLimite) {
+        await client.query('ROLLBACK');
+
+        return res.status(403).json({
+          error: `⚠️ Tu membresía permite reservar únicamente hasta el ${fechaLimite}`
+        });
+      }
+    }
+
+    // VALIDAR LIMITE DE RESERVAS
+    if (datosMembresia.limite_reservas !== null) {
+      const reservasUsadas = await client.query(
+        `SELECT COUNT(*) AS total
+        FROM reservas r
+        LEFT JOIN horarios_plantilla h
+          ON r.horario_id = h.id
+        LEFT JOIN horarios_excepciones e
+          ON r.excepcion_id = e.id
+        WHERE r.usuario_id = $1
+          AND COALESCE(h.lugar_id, e.lugar_id) = $2
+          AND (
+            $3::timestamptz IS NULL
+            OR r.creado_en >= $3::timestamptz
+          )`,
+        [
+          usuario_id,
+          lugar_id,
+          datosMembresia.membresia_inicio
+        ]
+      );
+
+      const usadas = Number(reservasUsadas.rows[0].total);
+      const limite = Number(datosMembresia.limite_reservas);
+
+      if (usadas >= limite) {
+        await client.query('ROLLBACK');
+
+        return res.status(403).json({
+          error: '⚠️ Has alcanzado el límite de reservas de tu membresía'
+        });
+      }
+    }
 
     if (!validarTiempoMinimo(fecha, hora_inicio)) {
       await client.query('ROLLBACK');
