@@ -359,11 +359,14 @@ router.get('/historial-pagos/:usuario_id', async (req, res) => {
         GREATEST(p.monto - p.pagado, 0) AS saldo_restante,
         p.estado,
 
-        a.fecha AS fecha_reserva,
+        TO_CHAR(a.fecha, 'YYYY-MM-DD') AS fecha_reserva,
         COALESCE(h.hora_inicio, e.hora_inicio) AS hora_inicio,
         COALESCE(h.hora_fin, e.hora_fin) AS hora_fin,
 
-        p.creado_en AS fecha_creacion_penalizacion,
+        TO_CHAR(
+          p.creado_en,
+          'YYYY-MM-DD"T"HH24:MI:SS'
+        ) AS fecha_creacion_penalizacion,
         p.ultimo_pago_en AS fecha_ultimo_pago
 
       FROM penalizaciones p
@@ -417,11 +420,14 @@ router.get('/historial-pagos/:usuario_id/:lugar_id', async (req, res) => {
         GREATEST(p.monto - p.pagado, 0) AS saldo_restante,
         p.estado,
 
-        a.fecha AS fecha_reserva,
+        TO_CHAR(a.fecha, 'YYYY-MM-DD') AS fecha_reserva,
         COALESCE(h.hora_inicio, e.hora_inicio) AS hora_inicio,
         COALESCE(h.hora_fin, e.hora_fin) AS hora_fin,
 
-        p.creado_en AS fecha_creacion_penalizacion,
+        TO_CHAR(
+          p.creado_en,
+          'YYYY-MM-DD"T"HH24:MI:SS'
+        ) AS fecha_creacion_penalizacion,
         p.ultimo_pago_en AS fecha_ultimo_pago
 
       FROM penalizaciones p

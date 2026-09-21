@@ -77,12 +77,10 @@ const AdminInscripciones = ({ lugar, mostrarMensaje, styles }) => {
   const formatearFecha = fecha => {
     if (!fecha) return 'No registrado';
 
-    return new Intl.DateTimeFormat('es-EC', {
-      timeZone: 'America/Guayaquil',
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    }).format(new Date(fecha));
+    const fechaTexto = String(fecha).slice(0, 10);
+    const [year, month, day] = fechaTexto.split('-');
+
+    return `${day}/${month}/${year}`;
   };
 
   const formatearFechaHora = fecha => {
@@ -96,6 +94,20 @@ const AdminInscripciones = ({ lugar, mostrarMensaje, styles }) => {
       hour: '2-digit',
       minute: '2-digit'
     }).format(new Date(fecha));
+  };
+
+  const formatearFechaHoraLocal = fecha => {
+    if (!fecha) return 'No registrado';
+
+    const [fechaParte, horaParte = ''] = String(fecha).split('T');
+    const [year, month, day] = fechaParte.split('-');
+    const [hour = '00', minute = '00'] = horaParte.split(':');
+
+    const horaNumero = Number(hour);
+    const periodo = horaNumero >= 12 ? 'p. m.' : 'a. m.';
+    const hora12 = horaNumero % 12 || 12;
+
+    return `${day}/${month}/${year}, ${String(hora12).padStart(2, '0')}:${minute} ${periodo}`;
   };
 
   const formatearHora = hora => {
@@ -492,9 +504,7 @@ const AdminInscripciones = ({ lugar, mostrarMensaje, styles }) => {
                     </p>
 
                     <p style={styles.cardSub}>
-                      Cargo generado: {formatearFechaHora(
-                        m.fecha_creacion_penalizacion
-                      )}
+                      Cargo generado: {formatearFechaHoraLocal(m.fecha_creacion_penalizacion)}
                     </p>
 
                     <p style={styles.cardSub}>
