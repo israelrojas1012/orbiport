@@ -1,13 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import API from '../services/api';
+import { useTheme } from '../context/ThemeContext';
+import ConfirmarSalida from '../components/ConfirmarSalida';
 
 export default function MiProgreso() {
   const navigate = useNavigate();
   const location = useLocation();
   const usuario = JSON.parse(localStorage.getItem('usuario') || '{}');
 
-  const [vista, setVista] = useState('inicio');
+  const [vista, setVista] = useState('progreso');
   const [ejercicios, setEjercicios] = useState([]);
   const [progresos, setProgresos] = useState([]);
   const [busqueda, setBusqueda] = useState('');
@@ -16,6 +18,13 @@ export default function MiProgreso() {
   const [cargando, setCargando] = useState(true);
   const [guardando, setGuardando] = useState(false);
   const [toast, setToast] = useState(null);
+  const [confirmarSalida, setConfirmarSalida] = useState(false);
+  const [notificaciones, setNotificaciones] = useState([]);
+  const [mostrarNotif, setMostrarNotif] = useState(false);
+  const [registroEliminar, setRegistroEliminar] = useState(null);
+
+  const { tema, cambiarTema } = useTheme();
+  
 
   const [form, setForm] = useState({
     peso: '',
@@ -44,13 +53,15 @@ export default function MiProgreso() {
     try {
       setCargando(true);
 
-      const [resEjercicios, resProgresos] = await Promise.all([
+      const [resEjercicios, resProgresos, resNotificaciones] = await Promise.all([
         API.get('/progreso/ejercicios'),
-        API.get(`/progreso/usuario/${usuario.id}`)
+        API.get(`/progreso/usuario/${usuario.id}`),
+        API.get(`/notificaciones/${usuario.id}`)
       ]);
 
       setEjercicios(resEjercicios.data);
       setProgresos(resProgresos.data);
+      setNotificaciones(resNotificaciones.data);
     } catch (err) {
       mostrarToast('Error al cargar Mi Progreso', 'error');
     } finally {
@@ -63,6 +74,24 @@ export default function MiProgreso() {
     setTimeout(() => setToast(null), 3000);
   };
 
+  const noLeidas = notificaciones.filter(n => !n.leida).length;
+
+  const marcarTodasLeidas = async () => {
+    try {
+      await API.put(`/notificaciones/leer/todas/${usuario.id}`);
+      setNotificaciones(prev =>
+        prev.map(n => ({ ...n, leida: true }))
+      );
+    } catch (err) {}
+  };
+
+  const cerrarSesion = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('usuario');
+    setConfirmarSalida(false);
+    window.location.replace('/');
+  };
+  
   const normalizarTexto = texto =>
     String(texto || '')
       .normalize('NFD')
@@ -86,10 +115,7 @@ export default function MiProgreso() {
         );
       })
       .sort((a, b) =>
-        (a.nombre_es || a.nombre).localeCompare(
-          b.nombre_es || b.nombre,
-          'es'
-        )
+        a.nombre.localeCompare(b.nombre, 'en')
       );
   }, [ejercicios, busqueda, categoria]);
 
@@ -111,10 +137,7 @@ export default function MiProgreso() {
     });
 
     return Object.values(grupos).sort((a, b) =>
-      (a.ejercicio_es || a.ejercicio).localeCompare(
-        b.ejercicio_es || b.ejercicio,
-        'es'
-      )
+      a.ejercicio.localeCompare(b.ejercicio, 'en')
     );
   }, [progresos]);
 
@@ -192,24 +215,19 @@ export default function MiProgreso() {
     }
   };
 
-  const eliminarRegistro = async id => {
-    const confirmar = window.confirm(
-      '¿Seguro que deseas eliminar este registro?'
-    );
-
-    if (!confirmar) return;
-
+  const eliminarRegistro = async registro => {
     try {
-      await API.delete(`/progreso/${id}`, {
+      await API.delete(`/progreso/${registro.id}`, {
         data: {
           usuario_id: usuario.id
         }
       });
 
       setProgresos(prev =>
-        prev.filter(p => p.id !== id)
+        prev.filter(p => p.id !== registro.id)
       );
 
+      setRegistroEliminar(null);
       mostrarToast('Registro eliminado correctamente');
     } catch (err) {
       mostrarToast(
@@ -277,6 +295,20 @@ export default function MiProgreso() {
 
   return (
     <div style={styles.container}>
+      <ConfirmarSalida
+        abierto={confirmarSalida}
+        onCancelar={() => setConfirmarSalida(false)}
+        onConfirmar={cerrarSesion}
+      />
+
+      <ConfirmarSalida
+        abierto={!!registroEliminar}
+        onCancelar={() => setRegistroEliminar(null)}
+        onConfirmar={() => eliminarRegistro(registroEliminar)}
+        titulo="Eliminar registro"
+        texto="¿Estás seguro de que deseas eliminar este registro?"
+        textoConfirmar="Sí, eliminar"
+      />      
       {toast && (
         <div
           style={{
@@ -291,59 +323,166 @@ export default function MiProgreso() {
         </div>
       )}
 
-      <div style={styles.header}>
-        <p style={styles.headerSubtitulo}>Entrenamiento</p>
-        <h2 style={styles.headerTitulo}>Mi Progreso</h2>
+      {/* ZONA SUPERIOR FIJA */}
+      <div style={styles.topBar}>
+        <div style={styles.header}>
+          <div>
+            <p style={styles.headerSubtitulo}>Entrenamiento</p>
+            <h2 style={styles.headerTitulo}>Mi Progreso</h2>
+          </div>
+
+          <div style={styles.headerAcciones}>
+            <button
+              onClick={cambiarTema}
+              style={styles.iconBtn}
+              aria-label="Cambiar tema"
+            >
+              {tema === 'light' ? '🌙' : '☀️'}
+            </button>
+
+            <button
+              style={styles.iconBtn}
+              onClick={() => {
+                setMostrarNotif(!mostrarNotif);
+
+                if (!mostrarNotif) {
+                  marcarTodasLeidas();
+                }
+              }}
+              aria-label="Notificaciones"
+            >
+              🔔
+
+              {noLeidas > 0 && (
+                <span style={styles.badge}>
+                  {noLeidas}
+                </span>
+              )}
+            </button>
+
+            <button
+              style={styles.btnSalir}
+              onClick={() => setConfirmarSalida(true)}
+              aria-label="Cerrar sesión"
+            >
+              <svg
+                width="19"
+                height="19"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                <path d="M16 17l5-5-5-5" />
+                <path d="M21 12H9" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        {mostrarNotif && (
+          <div style={styles.notifPanel}>
+            <div style={styles.notifHeader}>
+              <p style={styles.notifTitulo}>Notificaciones</p>
+
+              <button
+                style={styles.notifCerrar}
+                onClick={() => setMostrarNotif(false)}
+              >
+                ✕
+              </button>
+            </div>
+
+            {notificaciones.length === 0 ? (
+              <div style={styles.notifVacio}>
+                <p style={{ fontSize: 32 }}>🔔</p>
+                <p>No tienes notificaciones</p>
+              </div>
+            ) : (
+              <div style={styles.notifLista}>
+                {notificaciones.map(n => (
+                  <div
+                    key={n.id}
+                    style={{
+                      ...styles.notifItem,
+                      background: n.leida
+                        ? 'var(--bg-card)'
+                        : 'var(--color-primario-suave)',
+                      borderColor: n.leida
+                        ? 'var(--border-suave)'
+                        : 'var(--color-primario-borde)',
+                    }}
+                  >
+                    {!n.leida && (
+                      <div style={styles.notifPunto}></div>
+                    )}
+
+                    <div style={{ flex: 1 }}>
+                      <p style={styles.notifMensaje}>
+                        {n.mensaje}
+                      </p>
+
+                      <p style={styles.notifFecha}>
+                        {new Date(n.creado_en).toLocaleDateString(
+                          'es-EC',
+                          {
+                            day: 'numeric',
+                            month: 'long',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          }
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        <div style={styles.tabs}>
+          <button
+            style={{
+              ...styles.tab,
+              ...(vista === 'progreso' || vista === 'registro'
+                ? styles.tabActivo
+                : {})
+            }}
+            onClick={() => {
+              setEjercicioSeleccionado(null);
+              setVista('progreso');
+            }}
+          >
+            <span style={styles.tabIcon}>📈</span>
+            <span>Mi Progreso</span>
+          </button>
+
+          <button
+            style={{
+              ...styles.tab,
+              ...(vista === 'ejercicios'
+                ? styles.tabActivo
+                : {})
+            }}
+            onClick={() => {
+              setEjercicioSeleccionado(null);
+              setVista('ejercicios');
+            }}
+          >
+            <span style={styles.tabIcon}>➕</span>
+            <span>Agregar progreso</span>
+          </button>
+        </div>
       </div>
 
       <div style={styles.content}>
-        {vista === 'inicio' && (
-          <>
-            <button
-              style={styles.opcion}
-              onClick={() => setVista('progreso')}
-            >
-              <span style={styles.opcionIcono}>📈</span>
-
-              <div>
-                <strong style={styles.opcionTitulo}>
-                  Mi progreso
-                </strong>
-
-                <p style={styles.opcionTexto}>
-                  Consulta todos tus registros
-                </p>
-              </div>
-            </button>
-
-            <button
-              style={styles.opcion}
-              onClick={() => setVista('ejercicios')}
-            >
-              <span style={styles.opcionIcono}>➕</span>
-
-              <div>
-                <strong style={styles.opcionTitulo}>
-                  Agregar progreso
-                </strong>
-
-                <p style={styles.opcionTexto}>
-                  Registra un nuevo entrenamiento
-                </p>
-              </div>
-            </button>
-          </>
-        )}
 
         {vista === 'progreso' && (
           <>
-            <button
-              style={styles.volver}
-              onClick={() => setVista('inicio')}
-            >
-              ← Volver
-            </button>
-
             <h3 style={styles.tituloSeccion}>Mi progreso</h3>
 
             {progresosAgrupados.length === 0 ? (
@@ -374,12 +513,12 @@ export default function MiProgreso() {
                   <div style={styles.cardHeader}>
                     <div>
                       <strong style={styles.nombreEjercicio}>
-                        {grupo.ejercicio_es || grupo.ejercicio}
+                        {grupo.ejercicio}
                       </strong>
 
                       {grupo.ejercicio_es && (
-                        <p style={styles.nombreIngles}>
-                          {grupo.ejercicio}
+                        <p style={styles.nombreSecundario}>
+                          {grupo.ejercicio_es}
                         </p>
                       )}
 
@@ -422,9 +561,7 @@ export default function MiProgreso() {
 
                         <button
                           style={styles.btnEliminar}
-                          onClick={() =>
-                            eliminarRegistro(registro.id)
-                          }
+                          onClick={() => setRegistroEliminar(registro)}
                           aria-label="Eliminar registro"
                         >
                           🗑️
@@ -440,13 +577,6 @@ export default function MiProgreso() {
 
         {vista === 'ejercicios' && (
           <>
-            <button
-              style={styles.volver}
-              onClick={() => setVista('inicio')}
-            >
-              ← Volver
-            </button>
-
             <h3 style={styles.tituloSeccion}>
               Elige tu ejercicio para registrar
             </h3>
@@ -486,12 +616,12 @@ export default function MiProgreso() {
                 >
                   <div>
                     <strong>
-                      {ejercicio.nombre_es || ejercicio.nombre}
+                      {ejercicio.nombre}
                     </strong>
 
                     {ejercicio.nombre_es && (
-                      <p style={styles.nombreIngles}>
-                        {ejercicio.nombre}
+                      <p style={styles.nombreSecundario}>
+                        {ejercicio.nombre_es}
                       </p>
                     )}
                   </div>
@@ -518,13 +648,12 @@ export default function MiProgreso() {
               </span>
 
               <h3 style={styles.registroTitulo}>
-                {ejercicioSeleccionado.nombre_es ||
-                  ejercicioSeleccionado.nombre}
+                {ejercicioSeleccionado.nombre}
               </h3>
 
               {ejercicioSeleccionado.nombre_es && (
-                <p style={styles.nombreIngles}>
-                  {ejercicioSeleccionado.nombre}
+                <p style={styles.nombreSecundario}>
+                  {ejercicioSeleccionado.nombre_es}
                 </p>
               )}
 
@@ -662,9 +791,18 @@ export default function MiProgreso() {
         )}
       </div>
 
+      {/* NAVBAR */}
       <div style={styles.navbar}>
         <button
-          style={styles.navBtn}
+          style={{
+            ...styles.navBtn,
+            color: location.pathname === '/home'
+              ? 'var(--color-primario)'
+              : 'var(--text-suave)',
+            background: location.pathname === '/home'
+              ? 'var(--color-primario-suave)'
+              : 'transparent',
+          }}
           onClick={() => navigate('/home')}
         >
           <span style={styles.navIcon}>🏠</span>
@@ -674,34 +812,49 @@ export default function MiProgreso() {
         <button
           style={{
             ...styles.navBtn,
-            color:
-              location.pathname === '/perfil'
-                ? 'var(--color-primario)'
-                : 'var(--text-suave)'
+            color: location.pathname === '/mis-reservas'
+              ? 'var(--color-primario)'
+              : 'var(--text-suave)',
+            background: location.pathname === '/mis-reservas'
+              ? 'var(--color-primario-suave)'
+              : 'transparent',
           }}
-          onClick={() => navigate('/perfil')}
+          onClick={() => navigate('/mis-reservas')}
         >
-          <span style={styles.navIcon}>👤</span>
-          <span style={styles.navLabel}>Perfil</span>
+          <span style={styles.navIcon}>📅</span>
+          <span style={styles.navLabel}>Mis Reservas</span>
         </button>
 
         <button
           style={{
             ...styles.navBtn,
-            color: 'var(--color-primario)',
-            background: 'var(--color-primario-suave)'
+            color: location.pathname === '/mi-progreso'
+              ? 'var(--color-primario)'
+              : 'var(--text-suave)',
+            background: location.pathname === '/mi-progreso'
+              ? 'var(--color-primario-suave)'
+              : 'transparent',
           }}
+          onClick={() => navigate('/mi-progreso')}
         >
           <span style={styles.navIcon}>📈</span>
           <span style={styles.navLabel}>Mi Progreso</span>
         </button>
 
         <button
-          style={styles.navBtn}
-          onClick={() => navigate('/mis-reservas')}
+          style={{
+            ...styles.navBtn,
+            color: location.pathname === '/perfil'
+              ? 'var(--color-primario)'
+              : 'var(--text-suave)',
+            background: location.pathname === '/perfil'
+              ? 'var(--color-primario-suave)'
+              : 'transparent',
+          }}
+          onClick={() => navigate('/perfil')}
         >
-          <span style={styles.navIcon}>📅</span>
-          <span style={styles.navLabel}>Mis Reservas</span>
+          <span style={styles.navIcon}>👤</span>
+          <span style={styles.navLabel}>Perfil</span>
         </button>
       </div>
     </div>
@@ -709,6 +862,170 @@ export default function MiProgreso() {
 }
 
 const styles = {
+  topBar: {
+    position: 'sticky',
+    top: 0,
+    zIndex: 900,
+    background: 'var(--bg-principal)',
+    borderBottom: '1px solid var(--border-suave)'
+  },
+
+  headerAcciones: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 10
+  },
+
+  iconBtn: {
+    width: 42,
+    height: 42,
+    borderRadius: '50%',
+    border: '1px solid var(--border-suave)',
+    background: 'var(--bg-card)',
+    cursor: 'pointer',
+    fontSize: 19,
+    position: 'relative',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+
+  btnSalir: {
+    width: 42,
+    height: 42,
+    borderRadius: '50%',
+    border: '1px solid var(--border-suave)',
+    background: 'var(--bg-card)',
+    color: 'var(--color-error)',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+
+  badge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    minWidth: 18,
+    height: 18,
+    padding: '0 4px',
+    borderRadius: 20,
+    background: 'var(--color-primario)',
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: 700,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+
+  tabs: {
+    display: 'flex',
+    maxWidth: 720,
+    margin: '0 auto'
+  },
+
+  tab: {
+    flex: 1,
+    border: 'none',
+    borderBottom: '3px solid transparent',
+    background: 'transparent',
+    color: 'var(--text-suave)',
+    padding: '15px 8px',
+    fontWeight: 700,
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 7
+  },
+
+  tabActivo: {
+    color: 'var(--color-primario)',
+    borderBottomColor: 'var(--color-primario)'
+  },
+
+  tabIcon: {
+    fontSize: 20
+  },
+
+  notifPanel: {
+    position: 'absolute',
+    top: 82,
+    right: 16,
+    width: 'min(360px, calc(100vw - 32px))',
+    maxHeight: 420,
+    overflowY: 'auto',
+    padding: 14,
+    borderRadius: 16,
+    background: 'var(--bg-card)',
+    border: '1px solid var(--border-suave)',
+    boxShadow: '0 12px 35px rgba(0,0,0,0.18)',
+    zIndex: 1200
+  },
+
+  notifHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12
+  },
+
+  notifTitulo: {
+    margin: 0,
+    color: 'var(--text-principal)',
+    fontWeight: 700
+  },
+
+  notifCerrar: {
+    border: 'none',
+    background: 'transparent',
+    color: 'var(--text-suave)',
+    cursor: 'pointer',
+    fontSize: 18
+  },
+
+  notifVacio: {
+    textAlign: 'center',
+    color: 'var(--text-suave)',
+    padding: 20
+  },
+
+  notifLista: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 8
+  },
+
+  notifItem: {
+    display: 'flex',
+    gap: 8,
+    padding: 11,
+    border: '1px solid var(--border-suave)',
+    borderRadius: 12
+  },
+
+  notifPunto: {
+    width: 8,
+    height: 8,
+    marginTop: 6,
+    borderRadius: '50%',
+    background: 'var(--color-primario)',
+    flexShrink: 0
+  },
+
+  notifMensaje: {
+    margin: 0,
+    color: 'var(--text-principal)',
+    fontSize: 13
+  },
+
+  notifFecha: {
+    margin: '5px 0 0',
+    color: 'var(--text-suave)',
+    fontSize: 11
+  },
   container: {
     minHeight: '100vh',
     background: 'var(--bg-principal)',
@@ -726,9 +1043,13 @@ const styles = {
   },
 
   header: {
-    padding: '24px 20px 16px',
+    padding: '18px 20px 14px',
     maxWidth: 720,
-    margin: '0 auto'
+    margin: '0 auto',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 15
   },
 
   headerSubtitulo: {
@@ -827,7 +1148,7 @@ const styles = {
     fontSize: 16
   },
 
-  nombreIngles: {
+  nombreSecundario: {
     margin: '3px 0 7px',
     color: 'var(--text-suave)',
     fontSize: 12

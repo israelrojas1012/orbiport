@@ -682,17 +682,17 @@ export default function MisReservas() {
         <button
           style={{
             ...styles.navBtn,
-            color: location.pathname === '/perfil'
+            color: location.pathname === '/mis-reservas'
               ? 'var(--color-primario)'
               : 'var(--text-suave)',
-            background: location.pathname === '/perfil'
+            background: location.pathname === '/mis-reservas'
               ? 'var(--color-primario-suave)'
               : 'transparent',
           }}
-          onClick={() => navigate('/perfil')}
+          onClick={() => navigate('/mis-reservas')}
         >
-          <span style={styles.navIcon}>👤</span>
-          <span style={styles.navLabel}>Perfil</span>
+          <span style={styles.navIcon}>📅</span>
+          <span style={styles.navLabel}>Mis Reservas</span>
         </button>
 
         <button
@@ -714,17 +714,17 @@ export default function MisReservas() {
         <button
           style={{
             ...styles.navBtn,
-            color: location.pathname === '/mis-reservas'
+            color: location.pathname === '/perfil'
               ? 'var(--color-primario)'
               : 'var(--text-suave)',
-            background: location.pathname === '/mis-reservas'
+            background: location.pathname === '/perfil'
               ? 'var(--color-primario-suave)'
               : 'transparent',
           }}
-          onClick={() => navigate('/mis-reservas')}
+          onClick={() => navigate('/perfil')}
         >
-          <span style={styles.navIcon}>📅</span>
-          <span style={styles.navLabel}>Mis Reservas</span>
+          <span style={styles.navIcon}>👤</span>
+          <span style={styles.navLabel}>Perfil</span>
         </button>
       </div>
     </div>
