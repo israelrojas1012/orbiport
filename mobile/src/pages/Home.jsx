@@ -82,8 +82,10 @@ export default function Home() {
   };
 
   const cerrarSesion = () => {
-    localStorage.clear();
-    navigate('/');
+    localStorage.removeItem('token');
+    localStorage.removeItem('usuario');
+    setConfirmarSalida(false);
+    window.location.replace('/');
   };
 
   return (
@@ -276,7 +278,7 @@ export default function Home() {
           </div>
         </div>
       </div>
-      
+
       <div style={styles.content}>
         {filtrados.length === 0 ? (
           <div style={styles.vacio}>

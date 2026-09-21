@@ -148,8 +148,10 @@ export default function MisReservas() {
   };
 
   const cerrarSesion = () => {
-    localStorage.clear();
-    navigate('/');
+    localStorage.removeItem('token');
+    localStorage.removeItem('usuario');
+    setConfirmarSalida(false);
+    window.location.replace('/');
   };
 
   return (

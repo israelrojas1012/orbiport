@@ -543,6 +543,7 @@ router.get('/personas/:horario_id/:fecha', async (req, res) => {
       SELECT
         u.nombre,
         u.apellido,
+        u.correo,
         u.nickname,
         u.avatar
       FROM reservas r

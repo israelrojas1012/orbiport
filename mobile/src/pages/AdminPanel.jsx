@@ -130,7 +130,12 @@ export default function AdminPanel() {
 
 
 
-  const cerrarSesion = () => { localStorage.clear(); navigate('/'); };
+  const cerrarSesion = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('usuario');
+    setConfirmarSalida(false);
+    window.location.replace('/');
+  };
 
 
   if (!lugar) return (
@@ -264,9 +269,28 @@ export default function AdminPanel() {
                 <p style={styles.vacioTexto}>Aún no hay nadie inscrito en esta fecha</p>
               </div>
             ) : (
-              <div style={styles.listaInscritos}>
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 8,
+                  maxHeight: 300,
+                  overflowY: 'auto'
+                }}
+              >
                 {personasInscritas.map((p, idx) => (
-                  <div key={idx} style={styles.personaRow}>
+                  <div
+                    key={idx}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 12,
+                      background: 'var(--bg-hover)',
+                      border: '1px solid var(--border-suave)',
+                      borderRadius: 'var(--radius-sm)',
+                      padding: '12px 14px'
+                    }}
+                  >
                     <div
                       style={{
                         ...styles.cardIcono,
@@ -276,12 +300,13 @@ export default function AdminPanel() {
                       {obtenerAvatar(p.avatar)}
                     </div>
 
-                    <div style={{ flex: 1 }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
                       <p
                         style={{
                           fontSize: 14,
                           fontWeight: 700,
-                          color: 'var(--text-principal)'
+                          color: 'var(--text-principal)',
+                          margin: 0
                         }}
                       >
                         {p.nickname
@@ -292,12 +317,12 @@ export default function AdminPanel() {
                       {p.nickname && (
                         <p
                           style={{
-                            fontSize: 11,
-                            color: 'var(--text-suave)',
-                            marginTop: 2
+                            fontSize: 12,
+                            color: 'var(--text-secundario)',
+                            margin: '3px 0 0'
                           }}
                         >
-                          {p.nombre} {p.apellido}
+                          {`${p.nombre || ''} ${p.apellido || ''}`.trim()}
                         </p>
                       )}
 
@@ -306,7 +331,8 @@ export default function AdminPanel() {
                           style={{
                             fontSize: 11,
                             color: 'var(--text-suave)',
-                            marginTop: 2
+                            margin: '3px 0 0',
+                            overflowWrap: 'anywhere'
                           }}
                         >
                           {p.correo}
