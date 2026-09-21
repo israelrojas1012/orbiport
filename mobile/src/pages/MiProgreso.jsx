@@ -866,8 +866,9 @@ const styles = {
     position: 'sticky',
     top: 0,
     zIndex: 900,
-    background: 'var(--bg-principal)',
-    borderBottom: '1px solid var(--border-suave)'
+    background: 'var(--bg-card)',
+    borderBottom: '1px solid var(--border-suave)',
+    boxShadow: '0 2px 8px rgba(0,0,0,0.04)'
   },
 
   headerAcciones: {

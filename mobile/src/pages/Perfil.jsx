@@ -1108,83 +1108,89 @@ const styles = {
   },
 
   notifPanel: {
-    background: 'var(--bg-card)',
-    borderBottom: '1px solid var(--border-suave)',
-    padding: '16px 24px',
-    maxHeight: 400,
+    position: 'fixed',
+    top: '50%',
+    left: '50%',
+    transform: 'translate(-50%, -50%)',
+    width: 'min(520px, calc(100vw - 32px))',
+    maxHeight: '70vh',
     overflowY: 'auto',
-    boxShadow: 'var(--shadow-md)',
+    padding: 20,
+    borderRadius: 20,
+    background: 'var(--bg-card)',
+    border: '1px solid var(--border-suave)',
+    boxShadow: '0 18px 50px rgba(0,0,0,0.22)',
+    zIndex: 1200
   },
 
   notifHeader: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 16
   },
 
   notifTitulo: {
-    fontSize: 16,
-    fontWeight: 700,
+    margin: 0,
     color: 'var(--text-principal)',
+    fontSize: 22,
+    fontWeight: 700
   },
 
   notifCerrar: {
-    width: 28,
-    height: 28,
-    borderRadius: 'var(--radius-full)',
-    background: 'var(--bg-hover)',
+    width: 40,
+    height: 40,
     border: 'none',
-    color: 'var(--text-secundario)',
-    fontSize: 14,
+    borderRadius: '50%',
+    background: 'var(--bg-suave)',
+    color: 'var(--text-suave)',
     cursor: 'pointer',
+    fontSize: 20,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+
+  notifVacio: {
+    textAlign: 'center',
+    color: 'var(--text-suave)',
+    padding: 28
   },
 
   notifLista: {
     display: 'flex',
     flexDirection: 'column',
-    gap: 8,
-  },
-
-  notifVacio: {
-    fontSize: 13,
-    color: 'var(--text-suave)',
-    textAlign: 'center',
-    padding: '24px 0',
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    gap: 8,
+    gap: 10
   },
 
   notifItem: {
-    padding: '12px 14px',
-    borderRadius: 'var(--radius-md)',
-    border: '1px solid',
     display: 'flex',
-    alignItems: 'flex-start',
     gap: 10,
+    padding: 14,
+    border: '1px solid var(--border-suave)',
+    borderRadius: 14
   },
 
   notifPunto: {
     width: 8,
     height: 8,
-    borderRadius: 'var(--radius-full)',
+    marginTop: 7,
+    borderRadius: '50%',
     background: 'var(--color-primario)',
-    marginTop: 6,
-    flexShrink: 0,
+    flexShrink: 0
   },
 
   notifMensaje: {
-    fontSize: 13,
+    margin: 0,
     color: 'var(--text-principal)',
-    lineHeight: 1.5,
+    fontSize: 14,
+    lineHeight: 1.45
   },
 
   notifFecha: {
-    fontSize: 11,
+    margin: '6px 0 0',
     color: 'var(--text-suave)',
-    marginTop: 4,
+    fontSize: 12
   },
 
   iconBtn: {
