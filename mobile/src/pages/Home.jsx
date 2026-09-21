@@ -360,35 +360,65 @@ export default function Home() {
         <button
           style={{
             ...styles.navBtn,
-            color: location.pathname === '/home' ? 'var(--color-primario)' : 'var(--text-suave)',
-            background: location.pathname === '/home' ? 'var(--color-primario-suave)' : 'transparent',
+            color: location.pathname === '/home'
+              ? 'var(--color-primario)'
+              : 'var(--text-suave)',
+            background: location.pathname === '/home'
+              ? 'var(--color-primario-suave)'
+              : 'transparent',
           }}
           onClick={() => navigate('/home')}
         >
           <span style={styles.navIcon}>🏠</span>
           <span style={styles.navLabel}>Inicio</span>
         </button>
+
         <button
           style={{
             ...styles.navBtn,
-            color: location.pathname === '/mis-reservas' ? 'var(--color-primario)' : 'var(--text-suave)',
-            background: location.pathname === '/mis-reservas' ? 'var(--color-primario-suave)' : 'transparent',
-          }}
-          onClick={() => navigate('/mis-reservas')}
-        >
-          <span style={styles.navIcon}>📅</span>
-          <span style={styles.navLabel}>Mis Reservas</span>
-        </button>
-        <button
-          style={{
-            ...styles.navBtn,
-            color: location.pathname === '/perfil' ? 'var(--color-primario)' : 'var(--text-suave)',
-            background: location.pathname === '/perfil' ? 'var(--color-primario-suave)' : 'transparent',
+            color: location.pathname === '/perfil'
+              ? 'var(--color-primario)'
+              : 'var(--text-suave)',
+            background: location.pathname === '/perfil'
+              ? 'var(--color-primario-suave)'
+              : 'transparent',
           }}
           onClick={() => navigate('/perfil')}
         >
           <span style={styles.navIcon}>👤</span>
           <span style={styles.navLabel}>Perfil</span>
+        </button>
+
+        <button
+          style={{
+            ...styles.navBtn,
+            color: location.pathname === '/mi-progreso'
+              ? 'var(--color-primario)'
+              : 'var(--text-suave)',
+            background: location.pathname === '/mi-progreso'
+              ? 'var(--color-primario-suave)'
+              : 'transparent',
+          }}
+          onClick={() => navigate('/mi-progreso')}
+        >
+          <span style={styles.navIcon}>📈</span>
+          <span style={styles.navLabel}>Mi Progreso</span>
+        </button>
+
+        <button
+          style={{
+            ...styles.navBtn,
+            color: location.pathname === '/mis-reservas'
+              ? 'var(--color-primario)'
+              : 'var(--text-suave)',
+            background: location.pathname === '/mis-reservas'
+              ? 'var(--color-primario-suave)'
+              : 'transparent',
+          }}
+          onClick={() => navigate('/mis-reservas')}
+        >
+          <span style={styles.navIcon}>📅</span>
+          <span style={styles.navLabel}>Mis Reservas</span>
         </button>
       </div>
     </div>

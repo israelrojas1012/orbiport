@@ -4,6 +4,7 @@ import Registro from './pages/Registro';
 import Home from './pages/Home';
 import Perfil from './pages/Perfil';
 import MisReservas from './pages/MisReservas';
+import MiProgreso from './pages/MiProgreso';
 import DetalleLugar from './pages/DetalleLugar';
 import RecuperarPassword from './pages/RecuperarPassword';
 import AdminPanel from './pages/AdminPanel';
@@ -27,6 +28,7 @@ export default function App() {
         <Route path="/registro" element={<Registro />} />
         <Route path="/home" element={<Home />} />
         <Route path="/perfil" element={<Perfil />} />
+        <Route path="/mi-progreso" element={<MiProgreso />} />
         <Route path="/mis-reservas" element={<MisReservas />} />
         <Route path="/lugar/:id" element={<DetalleLugar />} />
         <Route path="/admin" element={<AdminPanel />} />

@@ -56,6 +56,9 @@ app.use('/api/asistencia', asistenciaRoutes);
 const fotosRoutes = require('./routes/fotos');
 app.use('/api/fotos', fotosRoutes);
 
+const progresoRoutes = require('./routes/progreso');
+app.use('/api/progreso', progresoRoutes);
+
 app.get('/', (req, res) => {
   res.json({ mensaje: '🟢 Orbiport API funcionando' });
 });
