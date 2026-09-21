@@ -140,59 +140,60 @@ const AdminInscripciones = ({ lugar, mostrarMensaje, styles }) => {
       );
     }
   };
+  
+  const abrirGestionMembresia = inscripcion => {
+    let fecha = '';
+
+    if (inscripcion.membresia_hasta) {
+      fecha = String(inscripcion.membresia_hasta).slice(0, 10);
+    }
+
+    setGestionarMembresia({
+      ...inscripcion,
+      membresia_hasta: fecha,
+      limite_reservas:
+        inscripcion.limite_reservas === null ||
+        inscripcion.limite_reservas === undefined
+          ? ''
+          : String(inscripcion.limite_reservas)
+    });
+  };
+
+  const guardarMembresia = async () => {
+    if (!gestionarMembresia) return;
+
+    try {
+      setGuardandoMembresia(true);
+
+      await API.put(
+        `/admin/inscripciones/${gestionarMembresia.id}/membresia`,
+        {
+          membresia_hasta:
+            gestionarMembresia.membresia_hasta || null,
+
+          limite_reservas:
+            gestionarMembresia.limite_reservas === ''
+              ? null
+              : Number(gestionarMembresia.limite_reservas)
+        }
+      );
+
+      await cargarInscripciones();
+
+      setGestionarMembresia(null);
+
+      mostrarMensaje('Membresía actualizada correctamente');
+    } catch (err) {
+      mostrarMensaje(
+        err.response?.data?.error ||
+        'Error al actualizar membresía'
+      );
+    } finally {
+      setGuardandoMembresia(false);
+    }
+  };
 
   const filtrados = inscripciones.filter(i => {
-    const abrirGestionMembresia = inscripcion => {
-      let fecha = '';
-
-      if (inscripcion.membresia_hasta) {
-        fecha = String(inscripcion.membresia_hasta).slice(0, 10);
-      }
-
-      setGestionarMembresia({
-        ...inscripcion,
-        membresia_hasta: fecha,
-        limite_reservas:
-          inscripcion.limite_reservas === null ||
-          inscripcion.limite_reservas === undefined
-            ? ''
-            : String(inscripcion.limite_reservas)
-      });
-    };
-
-    const guardarMembresia = async () => {
-      if (!gestionarMembresia) return;
-
-      try {
-        setGuardandoMembresia(true);
-
-        await API.put(
-          `/admin/inscripciones/${gestionarMembresia.id}/membresia`,
-          {
-            membresia_hasta:
-              gestionarMembresia.membresia_hasta || null,
-
-            limite_reservas:
-              gestionarMembresia.limite_reservas === ''
-                ? null
-                : Number(gestionarMembresia.limite_reservas)
-          }
-        );
-
-        await cargarInscripciones();
-
-        setGestionarMembresia(null);
-
-        mostrarMensaje('Membresía actualizada correctamente');
-      } catch (err) {
-        mostrarMensaje(
-          err.response?.data?.error ||
-          'Error al actualizar membresía'
-        );
-      } finally {
-        setGuardandoMembresia(false);
-      }
-    };
     if (!busqueda.trim()) return true;
 
     const q = busqueda.toLowerCase();
@@ -203,7 +204,7 @@ const AdminInscripciones = ({ lugar, mostrarMensaje, styles }) => {
       i.apellido?.toLowerCase().includes(q) ||
       i.correo?.toLowerCase().includes(q)
     );
-  });
+  });    
 
   return (
     <div style={styles.tabContent}>
