@@ -55,7 +55,7 @@ export default function MiProgreso() {
 
       const [resEjercicios, resProgresos, resNotificaciones] = await Promise.all([
         API.get('/progreso/ejercicios'),
-        API.get(`/progreso/usuario/${usuario.id}`),
+        API.get('/progreso/usuario/me'),
         API.get(`/notificaciones/${usuario.id}`)
       ]);
 
@@ -189,7 +189,6 @@ export default function MiProgreso() {
       setGuardando(true);
 
       await API.post('/progreso', {
-        usuario_id: usuario.id,
         ejercicio_id: ejercicioSeleccionado.id,
         peso: form.peso,
         unidad_peso: form.peso === '' ? null : form.unidad_peso,
@@ -217,11 +216,7 @@ export default function MiProgreso() {
 
   const eliminarRegistro = async registro => {
     try {
-      await API.delete(`/progreso/${registro.id}`, {
-        data: {
-          usuario_id: usuario.id
-        }
-      });
+      await API.delete(`/progreso/${registro.id}`);
 
       setProgresos(prev =>
         prev.filter(p => p.id !== registro.id)

@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { Pool } = require('pg');
+const { verificarToken } = require('../middleware/auth');
 
 const pool = new Pool({
   host: process.env.DB_HOST,
@@ -13,7 +14,7 @@ const pool = new Pool({
 // =====================================================
 // OBTENER CATALOGO DE EJERCICIOS
 // =====================================================
-router.get('/ejercicios', async (req, res) => {
+router.get('/ejercicios', verificarToken, async (req, res) => {
   try {
     const result = await pool.query(`
       SELECT
@@ -39,9 +40,9 @@ router.get('/ejercicios', async (req, res) => {
 // =====================================================
 // OBTENER HISTORIAL DE UN USUARIO
 // =====================================================
-router.get('/usuario/:usuario_id', async (req, res) => {
+router.get('/usuario/:usuario_id', verificarToken, async (req, res) => {
   try {
-    const { usuario_id } = req.params;
+    const usuario_id = req.usuario.id;
 
     const result = await pool.query(`
       SELECT
@@ -77,10 +78,11 @@ router.get('/usuario/:usuario_id', async (req, res) => {
 // =====================================================
 // AGREGAR REGISTRO DE PROGRESO
 // =====================================================
-router.post('/', async (req, res) => {
+router.post('/', verificarToken, async (req, res) => {
   try {
+    const usuario_id = req.usuario.id;
+
     const {
-      usuario_id,
       ejercicio_id,
       peso = null,
       unidad_peso = null,
@@ -90,9 +92,9 @@ router.post('/', async (req, res) => {
       tiempo_segundos = null
     } = req.body;
 
-    if (!usuario_id || !ejercicio_id) {
+    if (!ejercicio_id) {
       return res.status(400).json({
-        error: 'Usuario y ejercicio son obligatorios'
+        error: 'El ejercicio es obligatorio'
       });
     }
 
@@ -238,16 +240,10 @@ router.post('/', async (req, res) => {
 // =====================================================
 // ELIMINAR UN REGISTRO
 // =====================================================
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', verificarToken, async (req, res) => {
   try {
     const { id } = req.params;
-    const { usuario_id } = req.body;
-
-    if (!usuario_id) {
-      return res.status(400).json({
-        error: 'Usuario requerido'
-      });
-    }
+    const usuario_id = req.usuario.id;
 
     const result = await pool.query(`
       DELETE FROM progresos
