@@ -35,7 +35,7 @@ export default function MisReservas() {
       .then(res => setInscripciones(res.data))
       .catch(() => {});
 
-    API.get(`/notificaciones/${usuario.id}`)
+    API.get('/notificaciones/me')
       .then(res => setNotificaciones(res.data))
       .catch(() => {});
   };
@@ -49,7 +49,7 @@ export default function MisReservas() {
 
   const marcarTodasLeidas = async () => {
     try {
-      await API.put(`/notificaciones/leer/todas/${usuario.id}`);
+      await API.put('/notificaciones/leer/todas/me');
       setNotificaciones(prev => prev.map(n => ({ ...n, leida: true })));
     } catch (err) {}
   };

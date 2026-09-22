@@ -54,7 +54,7 @@ export default function Home() {
 
     cargarLugares();
 
-    API.get(`/notificaciones/${usuario.id}`)
+    API.get('/notificaciones/me')
       .then(res => setNotificaciones(res.data))
       .catch(() => {});
   }, []);
@@ -77,7 +77,7 @@ export default function Home() {
   const noLeidas = notificaciones.filter(n => !n.leida).length;
 
   const marcarTodasLeidas = async () => {
-    await API.put(`/notificaciones/leer/todas/${usuario.id}`);
+    await API.put('/notificaciones/leer/todas/me');
     setNotificaciones(prev => prev.map(n => ({ ...n, leida: true })));
   };
 

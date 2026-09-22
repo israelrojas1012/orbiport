@@ -60,7 +60,7 @@ export default function Perfil() {
         .catch(() => {});
     }
 
-    API.get(`/notificaciones/${usuario.id}`)
+    API.get('/notificaciones/me')
       .then(res => setNotificaciones(res.data))
       .catch(() => {});
   }, []);
@@ -139,7 +139,7 @@ export default function Perfil() {
 
   const marcarTodasLeidas = async () => {
     try {
-      await API.put(`/notificaciones/leer/todas/${usuario.id}`);
+      await API.put('/notificaciones/leer/todas/me');
       setNotificaciones(prev => prev.map(n => ({ ...n, leida: true })));
     } catch (err) {}
   };

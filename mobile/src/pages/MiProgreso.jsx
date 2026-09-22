@@ -56,7 +56,7 @@ export default function MiProgreso() {
       const [resEjercicios, resProgresos, resNotificaciones] = await Promise.all([
         API.get('/progreso/ejercicios'),
         API.get('/progreso/usuario/me'),
-        API.get(`/notificaciones/${usuario.id}`)
+        API.get('/notificaciones/me')
       ]);
 
       setEjercicios(resEjercicios.data);
@@ -78,7 +78,7 @@ export default function MiProgreso() {
 
   const marcarTodasLeidas = async () => {
     try {
-      await API.put(`/notificaciones/leer/todas/${usuario.id}`);
+      await API.put('/notificaciones/leer/todas/me');
       setNotificaciones(prev =>
         prev.map(n => ({ ...n, leida: true }))
       );
