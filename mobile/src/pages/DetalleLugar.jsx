@@ -149,13 +149,11 @@ export default function DetalleLugar() {
 
       const payload = horario.esExcepcion
         ? {
-            usuario_id: usuario.id,
             excepcion_id: horario.id,
             fecha: fechaStr,
             confirmar_conflicto: forzarConflicto
           }
         : {
-            usuario_id: usuario.id,
             horario_id: horario.id,
             fecha: fechaStr,
             confirmar_conflicto: forzarConflicto

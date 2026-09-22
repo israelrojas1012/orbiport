@@ -27,10 +27,9 @@ export default function MisReservas() {
   }, []);
 
   const cargarDatos = () => {
-    API.get(`/reservas/usuario/${usuario.id}`)
+    API.get('/reservas/usuario/me')
       .then(res => setReservas(res.data))
       .catch(() => {});
-
     API.get(`/inscripciones/usuario/${usuario.id}`)
       .then(res => setInscripciones(res.data))
       .catch(() => {});

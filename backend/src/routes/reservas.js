@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { Pool } = require('pg');
+const { verificarToken } = require('../middleware/auth');
 
 const pool = new Pool({
   host: process.env.DB_HOST,
@@ -77,9 +78,9 @@ const validarTiempoMinimo = (fecha, hora_inicio) => {
   return diferenciaHoras >= 2;
 };
 
-router.get('/usuario/:id', async (req, res) => {
+router.get('/usuario/:id', verificarToken, async (req, res) => {
   try {
-    const { id } = req.params;
+    const id = req.usuario.id;
 
     const result = await pool.query(`
       SELECT r.id, r.fecha, r.estado, r.horario_id, r.excepcion_id,
@@ -101,9 +102,10 @@ router.get('/usuario/:id', async (req, res) => {
   }
 });
 
-router.post('/', async (req, res) => {
+router.post('/', verificarToken, async (req, res) => {
+  const usuario_id = req.usuario.id;
+
   const {
-    usuario_id,
     horario_id,
     excepcion_id,
     fecha,
@@ -337,9 +339,10 @@ router.post('/', async (req, res) => {
   }
 });
 
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', verificarToken, async (req, res) => {
   try {
     const { id } = req.params;
+    const usuario_id = req.usuario.id;
 
     const reserva = await pool.query(`
       SELECT r.*,
@@ -349,7 +352,8 @@ router.delete('/:id', async (req, res) => {
       LEFT JOIN horarios_plantilla h ON r.horario_id = h.id
       LEFT JOIN horarios_excepciones e ON r.excepcion_id = e.id
       WHERE r.id = $1
-    `, [id]);
+        AND r.usuario_id = $2
+    `, [id, usuario_id]);
 
     if (reserva.rows.length === 0) {
       return res.status(404).json({
@@ -372,8 +376,10 @@ router.delete('/:id', async (req, res) => {
     }
 
     await pool.query(
-      'DELETE FROM reservas WHERE id = $1',
-      [id]
+      `DELETE FROM reservas
+      WHERE id = $1
+        AND usuario_id = $2`,
+      [id, usuario_id]
     );
 
     res.json({
