@@ -55,7 +55,7 @@ export default function Perfil() {
       .catch(() => {});
 
     if (usuario.rol === 'cliente') {
-      API.get(`/asistencia/historial-pagos/${usuario.id}`)
+      API.get('/admin/membresias/usuario/me')
         .then(res => setMembresias(res.data))
         .catch(() => {});
     }

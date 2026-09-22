@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { Pool } = require('pg');
+const { verificarToken } = require('../middleware/auth');
 
 const pool = new Pool({
   host: process.env.DB_HOST,
@@ -359,9 +360,9 @@ router.delete('/inscripciones/:id', async (req, res) => {
 });
 
 // MEMBRESIAS DE UN CLIENTE
-router.get('/membresias/usuario/:usuario_id', async (req, res) => {
+router.get('/membresias/usuario/:usuario_id', verificarToken, async (req, res) => {
   try {
-    const { usuario_id } = req.params;
+    const usuario_id = req.usuario.id;
 
     const result = await pool.query(
       `SELECT
@@ -377,8 +378,20 @@ router.get('/membresias/usuario/:usuario_id', async (req, res) => {
              OR r.creado_en >= i.membresia_inicio
          ) AS reservas_usadas
        FROM inscripciones i
-       JOIN lugares l
-         ON l.id = i.lugar_id
+        JOIN lugares l
+          ON l.id = i.lugar_id
+        JOIN (
+          SELECT lugar_id, MAX(id) AS ultima_inscripcion_id
+          FROM inscripciones
+          WHERE usuario_id = $1
+            AND estado = 'aprobada'
+            AND (
+              membresia_hasta IS NOT NULL
+              OR limite_reservas IS NOT NULL
+            )
+          GROUP BY lugar_id
+        ) ultima
+          ON ultima.ultima_inscripcion_id = i.id
        LEFT JOIN reservas r
          ON r.usuario_id = i.usuario_id
         AND (
