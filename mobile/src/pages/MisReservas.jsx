@@ -30,7 +30,7 @@ export default function MisReservas() {
     API.get('/reservas/usuario/me')
       .then(res => setReservas(res.data))
       .catch(() => {});
-    API.get(`/inscripciones/usuario/${usuario.id}`)
+    API.get('/inscripciones/usuario/me')
       .then(res => setInscripciones(res.data))
       .catch(() => {});
 
@@ -111,14 +111,14 @@ export default function MisReservas() {
   const ejecutarCancelacionInscripcion = async (i) => {
     try {
       if (i.estado === 'pendiente') {
-        await API.delete(`/inscripciones/cancelar/${usuario.id}/${i.lugar_id}`);
+        await API.delete(`/inscripciones/cancelar/me/${i.lugar_id}`);
         setInscripciones(prev => prev.filter(x => x.id !== i.id));
         setInscripcionConfirmar(null);
         mostrarToast('Solicitud cancelada correctamente.');
         return;
       }
 
-      const res = await API.delete(`/inscripciones/salir/${usuario.id}/${i.lugar_id}`);
+      const res = await API.delete(`/inscripciones/salir/me/${i.lugar_id}`);
 
       setInscripciones(prev => prev.filter(x => x.id !== i.id));
       setInscripcionConfirmar(null);

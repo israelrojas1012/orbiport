@@ -248,7 +248,7 @@ export default function DetalleLugar() {
 
   const inscribirse = async () => {
     try {
-      await API.post('/inscripciones', { usuario_id: usuario.id, lugar_id: id });
+      await API.post('/inscripciones', { lugar_id: id });
       setEstadoInscripcion('pendiente');
       mostrarToast('Solicitud enviada, espera la aprobación del administrador.', 'exito');
     } catch (err) {

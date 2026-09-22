@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { Pool } = require('pg');
+const { verificarToken } = require('../middleware/auth');
 
 const pool = new Pool({
   host: process.env.DB_HOST,
@@ -11,8 +12,9 @@ const pool = new Pool({
 });
 
 // SOLICITAR INSCRIPCION
-router.post('/', async (req, res) => {
-  const { usuario_id, lugar_id } = req.body;
+router.post('/', verificarToken, async (req, res) => {
+  const usuario_id = req.usuario.id;
+  const { lugar_id } = req.body;
   try {
     const existe = await pool.query(
       'SELECT id, estado, creado_en FROM inscripciones WHERE usuario_id = $1 AND lugar_id = $2',
@@ -47,9 +49,9 @@ router.post('/', async (req, res) => {
 });
 
 // OBTENER INSCRIPCIONES DE UN USUARIO
-router.get('/usuario/:id', async (req, res) => {
+router.get('/usuario/:id', verificarToken, async (req, res) => {
   try {
-    const { id } = req.params;
+    const id = req.usuario.id;
     const result = await pool.query(`
       SELECT i.id, i.estado, i.creado_en, i.lugar_id,
              l.nombre as lugar_nombre,
@@ -66,8 +68,9 @@ router.get('/usuario/:id', async (req, res) => {
 });
 
 // SALIR DEL LUGAR (cliente)
-router.delete('/salir/:usuario_id/:lugar_id', async (req, res) => {
-  const { usuario_id, lugar_id } = req.params;
+router.delete('/salir/:usuario_id/:lugar_id', verificarToken, async (req, res) => {
+  const usuario_id = req.usuario.id;
+  const { lugar_id } = req.params;
   const client = await pool.connect();
 
   try {
@@ -161,21 +164,46 @@ router.delete('/salir/:usuario_id/:lugar_id', async (req, res) => {
 });
 
 // CANCELAR INSCRIPCION (cliente)
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', verificarToken, async (req, res) => {
   try {
     const { id } = req.params;
-    const inscripcion = await pool.query('SELECT estado FROM inscripciones WHERE id = $1', [id]);
-    if (inscripcion.rows.length === 0) return res.status(404).json({ error: 'Inscripcion no encontrada' });
-    await pool.query('DELETE FROM inscripciones WHERE id = $1', [id]);
-    res.json({ mensaje: 'Inscripcion cancelada' });
+    const usuario_id = req.usuario.id;
+
+    const inscripcion = await pool.query(
+      `SELECT estado
+       FROM inscripciones
+       WHERE id = $1
+         AND usuario_id = $2`,
+      [id, usuario_id]
+    );
+
+    if (inscripcion.rows.length === 0) {
+      return res.status(404).json({
+        error: 'Inscripcion no encontrada'
+      });
+    }
+
+    await pool.query(
+      `DELETE FROM inscripciones
+       WHERE id = $1
+         AND usuario_id = $2`,
+      [id, usuario_id]
+    );
+
+    res.json({
+      mensaje: 'Inscripcion cancelada'
+    });
   } catch (err) {
-    res.status(500).json({ error: 'Error al cancelar inscripcion' });
+    res.status(500).json({
+      error: 'Error al cancelar inscripcion'
+    });
   }
 });
 
-router.delete('/cancelar/:usuario_id/:lugar_id', async (req, res) => {
+router.delete('/cancelar/:usuario_id/:lugar_id', verificarToken, async (req, res) => {
   try {
-    const { usuario_id, lugar_id } = req.params;
+    const usuario_id = req.usuario.id;
+    const { lugar_id } = req.params;
 
     const inscripcion = await pool.query(
       'SELECT id, estado FROM inscripciones WHERE usuario_id=$1 AND lugar_id=$2',
