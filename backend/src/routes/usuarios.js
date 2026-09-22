@@ -3,6 +3,7 @@ const router = express.Router();
 const bcrypt = require('bcryptjs');
 const { Pool } = require('pg');
 const { enviarEmail } = require('../email');
+const { verificarToken } = require('../middleware/auth');
 
 const pool = new Pool({
   host: process.env.DB_HOST,
@@ -13,9 +14,9 @@ const pool = new Pool({
 });
 
 // ACTUALIZAR PERFIL
-router.put('/:id', async (req, res) => {
+router.put('/:id', verificarToken, async (req, res) => {
   try {
-    const { id } = req.params;
+    const id = req.usuario.id;
     const { nombre, apellido, nickname, avatar } = req.body;
 
     const usuarioResult = await pool.query(
@@ -128,9 +129,9 @@ router.put('/:id', async (req, res) => {
 });
 
 // CAMBIAR CONTRASEÑA
-router.put('/:id/password', async (req, res) => {
+router.put('/:id/password', verificarToken, async (req, res) => {
   try {
-    const { id } = req.params;
+    const id = req.usuario.id;
     const { actual, nueva } = req.body;
     if (!actual || !nueva) {
       return res.status(400).json({ error: 'Completa todos los campos' });
@@ -179,9 +180,9 @@ router.put('/:id/password', async (req, res) => {
 });
 
 // OBTENER SALDO DE PENALIZACIONES
-router.get('/:id/saldo', async (req, res) => {
+router.get('/:id/saldo', verificarToken, async (req, res) => {
   try {
-    const { id } = req.params;
+    const id = req.usuario.id;
     // Total general
     const total = await pool.query(`
       SELECT 
@@ -214,9 +215,9 @@ router.get('/:id/saldo', async (req, res) => {
 });
 
 // ACEPTAR TERMINOS Y CONDICIONES
-router.put('/:id/aceptar-terminos', async (req, res) => {
+router.put('/:id/aceptar-terminos', verificarToken, async (req, res) => {
   try {
-    const { id } = req.params;
+    const id = req.usuario.id;
     await pool.query(
       'UPDATE usuarios SET acepto_terminos=TRUE, fecha_acepto_terminos=NOW() WHERE id=$1',
       [id]

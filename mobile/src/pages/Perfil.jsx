@@ -50,12 +50,12 @@ export default function Perfil() {
   const { tema, cambiarTema } = useTheme();
 
   useEffect(() => {
-    API.get(`/usuarios/${usuario.id}/saldo`)
+    API.get('/usuarios/me/saldo')
       .then(res => setSaldo(res.data))
       .catch(() => {});
 
     if (usuario.rol === 'cliente') {
-      API.get(`/admin/membresias/usuario/${usuario.id}`)
+      API.get(`/asistencia/historial-pagos/${usuario.id}`)
         .then(res => setMembresias(res.data))
         .catch(() => {});
     }
@@ -85,7 +85,7 @@ export default function Perfil() {
         return;
       }
 
-      const res = await API.put(`/usuarios/${usuario.id}`, form);
+      const res = await API.put('/usuarios/me', form);
 
       const actualizado = {
         ...usuario,
@@ -126,7 +126,7 @@ export default function Perfil() {
       return;
     }
     try {
-      await API.put(`/usuarios/${usuario.id}/password`, passForm);
+      await API.put('/usuarios/me/password', passForm);
       setPassForm({ actual: '', nueva: '', confirmar: '' });
       setEditandoPass(false);
       mostrarToast('Contraseña actualizada correctamente');
