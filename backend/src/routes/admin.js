@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { Pool } = require('pg');
-const { verificarToken } = require('../middleware/auth');
+const { verificarToken, soloAdmin } = require('../middleware/auth');
 
 const pool = new Pool({
   host: process.env.DB_HOST,
@@ -10,6 +10,15 @@ const pool = new Pool({
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
 });
+
+const obtenerLugarAdmin = async (admin_id) => {
+  const result = await pool.query(
+    'SELECT id FROM lugares WHERE admin_id = $1',
+    [admin_id]
+  );
+
+  return result.rows[0]?.id || null;
+};
 
 const obtenerAhoraEcuador = () => {
   const partes = new Intl.DateTimeFormat('en-US', {
@@ -89,9 +98,9 @@ const validarFechaHoraMinima = (fecha, hora_inicio) => {
   return diferenciaHoras >= 24;
 };
 
-router.get('/lugar/:admin_id', async (req, res) => {
+router.get('/lugar/:admin_id', verificarToken, soloAdmin, async (req, res) => {
   try {
-    const { admin_id } = req.params;
+    const admin_id = req.usuario.id;
     const result = await pool.query('SELECT * FROM lugares WHERE admin_id = $1', [admin_id]);
     if (result.rows.length === 0) return res.status(404).json({ error: 'No tienes un lugar asignado' });
     res.json(result.rows[0]);
@@ -100,23 +109,58 @@ router.get('/lugar/:admin_id', async (req, res) => {
   }
 });
 
-router.put('/lugar/:id', async (req, res) => {
+router.put('/lugar/:id', verificarToken, soloAdmin, async (req, res) => {
   try {
     const { id } = req.params;
+    const admin_id = req.usuario.id;
     const { nombre, descripcion, direccion, telefono, foto_url, categoria, maps_url } = req.body;
-    await pool.query(
-      'UPDATE lugares SET nombre=$1, descripcion=$2, direccion=$3, telefono=$4, foto_url=$5, categoria=$6, maps_url=$7 WHERE id=$8',
-      [nombre, descripcion, direccion, telefono, foto_url, categoria, maps_url, id]
+
+    const result = await pool.query(
+      `UPDATE lugares
+       SET nombre=$1,
+           descripcion=$2,
+           direccion=$3,
+           telefono=$4,
+           foto_url=$5,
+           categoria=$6,
+           maps_url=$7
+       WHERE id=$8
+         AND admin_id=$9
+       RETURNING id`,
+      [
+        nombre,
+        descripcion,
+        direccion,
+        telefono,
+        foto_url,
+        categoria,
+        maps_url,
+        id,
+        admin_id
+      ]
     );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        error: 'Lugar no encontrado'
+      });
+    }
+
     res.json({ mensaje: 'Lugar actualizado' });
   } catch (err) {
     res.status(500).json({ error: 'Error al actualizar lugar' });
   }
 });
 
-router.get('/inscripciones/:lugar_id', async (req, res) => {
+router.get('/inscripciones/:lugar_id', verificarToken, soloAdmin, async (req, res) => {
   try {
-    const { lugar_id } = req.params;
+    const lugar_id = await obtenerLugarAdmin(req.usuario.id);
+
+    if (!lugar_id) {
+      return res.status(404).json({
+        error: 'No tienes un lugar asignado'
+      });
+    }
     const result = await pool.query(`
       SELECT i.id,
               i.usuario_id,
@@ -141,7 +185,7 @@ router.get('/inscripciones/:lugar_id', async (req, res) => {
 });
 
 // GESTIONAR MEMBRESIA DE UN CLIENTE
-router.put('/inscripciones/:id/membresia', async (req, res) => {
+router.put('/inscripciones/:id/membresia', verificarToken, soloAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const {
@@ -160,11 +204,20 @@ router.put('/inscripciones/:id/membresia', async (req, res) => {
       });
     }
 
+    const lugar_id = await obtenerLugarAdmin(req.usuario.id);
+
+    if (!lugar_id) {
+      return res.status(404).json({
+        error: 'No tienes un lugar asignado'
+      });
+    }
+
     const inscripcion = await pool.query(
       `SELECT id
-       FROM inscripciones
-       WHERE id = $1`,
-      [id]
+      FROM inscripciones
+      WHERE id = $1
+        AND lugar_id = $2`,
+      [id, lugar_id]
     );
 
     if (inscripcion.rows.length === 0) {
@@ -178,7 +231,8 @@ router.put('/inscripciones/:id/membresia', async (req, res) => {
       SET membresia_hasta = $1,
           limite_reservas = $2,
           membresia_inicio = NOW()
-      WHERE id = $3`,
+      WHERE id = $3
+        AND lugar_id = $4`,
       [
         membresia_hasta || null,
         limite_reservas === '' ||
@@ -186,8 +240,9 @@ router.put('/inscripciones/:id/membresia', async (req, res) => {
         limite_reservas === undefined
           ? null
           : Number(limite_reservas),
-        id
-      ]
+          id,
+          lugar_id
+          ]
     );
 
     res.json({
@@ -203,17 +258,40 @@ router.put('/inscripciones/:id/membresia', async (req, res) => {
   }
 });
 
-router.put('/inscripciones/:id', async (req, res) => {
+router.put('/inscripciones/:id', verificarToken, soloAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const { estado } = req.body;
-    await pool.query('UPDATE inscripciones SET estado = $1 WHERE id = $2', [estado, id]);
+
+    const lugar_id = await obtenerLugarAdmin(req.usuario.id);
+
+    if (!lugar_id) {
+      return res.status(404).json({
+        error: 'No tienes un lugar asignado'
+      });
+    }
+
+    const actualizado = await pool.query(
+      `UPDATE inscripciones
+      SET estado = $1
+      WHERE id = $2
+        AND lugar_id = $3
+      RETURNING id`,
+      [estado, id, lugar_id]
+    );
+
+    if (actualizado.rows.length === 0) {
+      return res.status(404).json({
+        error: 'Inscripción no encontrada'
+      });
+    }
     const inscripcion = await pool.query(`
       SELECT i.usuario_id, l.nombre as lugar_nombre
       FROM inscripciones i
       JOIN lugares l ON i.lugar_id = l.id
       WHERE i.id = $1
-    `, [id]);
+        AND i.lugar_id = $2
+    `, [id, lugar_id]);
     const { usuario_id, lugar_nombre } = inscripcion.rows[0];
     const mensaje = estado === 'aprobada'
       ? `Tu solicitud para unirte a "${lugar_nombre}" fue aprobada. Ya puedes reservar!`
@@ -228,13 +306,28 @@ router.put('/inscripciones/:id', async (req, res) => {
   }
 });
 
-router.delete('/inscripciones/:id', async (req, res) => {
+router.delete('/inscripciones/:id', verificarToken, soloAdmin, async (req, res) => {
   const { id } = req.params;
   const { confirmar_eliminacion = false } = req.body;
   const client = await pool.connect();
 
   try {
     await client.query('BEGIN');
+
+    const lugarAdmin = await client.query(
+      'SELECT id FROM lugares WHERE admin_id = $1',
+      [req.usuario.id]
+    );
+
+    if (lugarAdmin.rows.length === 0) {
+      await client.query('ROLLBACK');
+
+      return res.status(404).json({
+        error: 'No tienes un lugar asignado'
+      });
+    }
+
+    const lugar_id = lugarAdmin.rows[0].id;
 
     const inscripcion = await client.query(
       `SELECT i.id,
@@ -246,8 +339,9 @@ router.delete('/inscripciones/:id', async (req, res) => {
        FROM inscripciones i
        JOIN usuarios u ON i.usuario_id = u.id
        JOIN lugares l ON i.lugar_id = l.id
-       WHERE i.id = $1`,
-      [id]
+       WHERE i.id = $1
+        AND i.lugar_id = $2`,
+      [id, lugar_id]
     );
 
     if (inscripcion.rows.length === 0) {
@@ -451,9 +545,15 @@ router.get('/membresias/usuario/:usuario_id', verificarToken, async (req, res) =
   }
 });
 
-router.get('/horarios/:lugar_id', async (req, res) => {
+router.get('/horarios/:lugar_id', verificarToken, soloAdmin, async (req, res) => {
   try {
-    const { lugar_id } = req.params;
+    const lugar_id = await obtenerLugarAdmin(req.usuario.id);
+
+    if (!lugar_id) {
+      return res.status(404).json({
+        error: 'No tienes un lugar asignado'
+      });
+    }
 
     const result = await pool.query(
       `SELECT h.*,
@@ -504,10 +604,9 @@ router.get('/horarios/:lugar_id', async (req, res) => {
   }
 });
 
-router.post('/horarios', async (req, res) => {
+router.post('/horarios', verificarToken, soloAdmin, async (req, res) => {
   try {
     const {
-      lugar_id,
       dia,
       hora_inicio,
       hora_fin,
@@ -516,6 +615,14 @@ router.post('/horarios', async (req, res) => {
       instructor,
       descripcion
     } = req.body;
+
+    const lugar_id = await obtenerLugarAdmin(req.usuario.id);
+
+    if (!lugar_id) {
+      return res.status(404).json({
+        error: 'No tienes un lugar asignado'
+      });
+    }
     if (!validarTiempoMinimo(dia, hora_inicio)) {
       return res.status(400).json({
         error: 'No puedes crear un horario con menos de 24 horas de anticipación'
@@ -559,9 +666,16 @@ router.post('/horarios', async (req, res) => {
   }
 });
 
-router.put('/horarios/:id', async (req, res) => {
+router.put('/horarios/:id', verificarToken, soloAdmin, async (req, res) => {
   try {
     const { id } = req.params;
+    const lugar_id = await obtenerLugarAdmin(req.usuario.id);
+
+    if (!lugar_id) {
+      return res.status(404).json({
+        error: 'No tienes un lugar asignado'
+      });
+    }
     const {
       hora_inicio,
       hora_fin,
@@ -591,8 +705,9 @@ router.put('/horarios/:id', async (req, res) => {
          WHERE r.horario_id = h.id
            AND r.fecha >= CURRENT_DATE) AS reservas_activas
        FROM horarios_plantilla h
-       WHERE h.id = $1`,
-      [id]
+       WHERE h.id = $1
+        AND h.lugar_id = $2`,
+      [id, lugar_id]
     );
 
     if (actual.rows.length === 0) {
@@ -623,8 +738,6 @@ router.put('/horarios/:id', async (req, res) => {
         });
       }
     }
-
-    const lugar_id = horarioActual.lugar_id;
 
     const existe = await pool.query(
       `SELECT id, tipo_cancha
@@ -679,10 +792,31 @@ router.put('/horarios/:id', async (req, res) => {
   }
 });
 
-router.delete('/horarios/:id', async (req, res) => {
+router.delete('/horarios/:id', verificarToken, soloAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-    const horario = await pool.query('SELECT * FROM horarios_plantilla WHERE id=$1', [id]);
+
+    const lugar_id = await obtenerLugarAdmin(req.usuario.id);
+
+    if (!lugar_id) {
+      return res.status(404).json({
+        error: 'No tienes un lugar asignado'
+      });
+    }
+
+    const horario = await pool.query(
+      `SELECT *
+      FROM horarios_plantilla
+      WHERE id = $1
+        AND lugar_id = $2`,
+      [id, lugar_id]
+    );
+
+    if (horario.rows.length === 0) {
+      return res.status(404).json({
+        error: 'Horario no encontrado'
+      });
+    }
     if (horario.rows.length > 0) {
       const h = horario.rows[0];
       if (!validarTiempoMinimo(h.dia, h.hora_inicio)) {
@@ -718,12 +852,24 @@ router.delete('/horarios/:id', async (req, res) => {
   }
 });
 
-router.post('/horarios/copiar', async (req, res) => {
+router.post('/horarios/copiar', verificarToken, soloAdmin, async (req, res) => {
   try {
-    const { lugar_id, horarios_ids, dias_destino } = req.body;
+    const { horarios_ids, dias_destino } = req.body;
+
+    const lugar_id = await obtenerLugarAdmin(req.usuario.id);
+
+    if (!lugar_id) {
+      return res.status(404).json({
+        error: 'No tienes un lugar asignado'
+      });
+    }
+
     const horariosOrigen = await pool.query(
-      'SELECT * FROM horarios_plantilla WHERE id = ANY($1)',
-      [horarios_ids]
+      `SELECT *
+      FROM horarios_plantilla
+      WHERE id = ANY($1)
+        AND lugar_id = $2`,
+      [horarios_ids, lugar_id]
     );
     const errores = [];
     const copiados = [];
@@ -773,9 +919,17 @@ router.post('/horarios/copiar', async (req, res) => {
   }
 });
 
-router.post('/excepciones', async (req, res) => {
+router.post('/excepciones', verificarToken, soloAdmin, async (req, res) => {
   try {
-    const { lugar_id, fecha, horarios, cerrado, motivo } = req.body;
+    const { fecha, horarios, cerrado, motivo } = req.body;
+
+    const lugar_id = await obtenerLugarAdmin(req.usuario.id);
+
+    if (!lugar_id) {
+      return res.status(404).json({
+        error: 'No tienes un lugar asignado'
+      });
+    }
 
     if (cerrado) {
       const ahora = obtenerAhoraEcuador();
@@ -888,9 +1042,15 @@ router.post('/excepciones', async (req, res) => {
   }
 });
 
-router.get('/excepciones/:lugar_id', async (req, res) => {
+router.get('/excepciones/:lugar_id', verificarToken, soloAdmin, async (req, res) => {
   try {
-    const { lugar_id } = req.params;
+    const lugar_id = await obtenerLugarAdmin(req.usuario.id);
+
+    if (!lugar_id) {
+      return res.status(404).json({
+        error: 'No tienes un lugar asignado'
+      });
+    }
     const result = await pool.query(
       'SELECT * FROM horarios_excepciones WHERE lugar_id = $1 AND fecha >= CURRENT_DATE ORDER BY fecha ASC, hora_inicio ASC',
       [lugar_id]
@@ -901,9 +1061,17 @@ router.get('/excepciones/:lugar_id', async (req, res) => {
   }
 });
 
-router.delete('/excepciones/:lugar_id/:fecha', async (req, res) => {
+router.delete('/excepciones/:lugar_id/:fecha', verificarToken, soloAdmin, async (req, res) => {
   try {
-    const { lugar_id, fecha } = req.params;
+    const { fecha } = req.params;
+
+    const lugar_id = await obtenerLugarAdmin(req.usuario.id);
+
+    if (!lugar_id) {
+      return res.status(404).json({
+        error: 'No tienes un lugar asignado'
+      });
+    }
 
     const fechaExcepcion = new Date(fecha + 'T00:00:00');
     const hoy = new Date();
@@ -941,9 +1109,15 @@ router.delete('/excepciones/:lugar_id/:fecha', async (req, res) => {
 });
 
 // EDITAR UN HORARIO ESPECIAL INDIVIDUAL
-router.put('/excepcion/:id', async (req, res) => {
+router.put('/excepcion/:id', verificarToken, soloAdmin, async (req, res) => {
   try {
-    const { id } = req.params;
+    const lugar_id = await obtenerLugarAdmin(req.usuario.id);
+
+    if (!lugar_id) {
+      return res.status(404).json({
+        error: 'No tienes un lugar asignado'
+      });
+    }
     const {
       hora_inicio,
       hora_fin,
@@ -965,8 +1139,11 @@ router.put('/excepcion/:id', async (req, res) => {
     }
 
     const actual = await pool.query(
-      'SELECT fecha FROM horarios_excepciones WHERE id=$1',
-      [id]
+      `SELECT fecha
+      FROM horarios_excepciones
+      WHERE id = $1
+        AND lugar_id = $2`,
+      [id, lugar_id]
     );
 
     if (actual.rows.length === 0) {
@@ -990,14 +1167,16 @@ router.put('/excepcion/:id', async (req, res) => {
           cupos=$3,
           instructor=$4,
           descripcion=$5
-      WHERE id=$6`,
+      WHERE id=$6
+        AND lugar_id=$7`,
       [
         hora_inicio,
         hora_fin,
         cupos,
         instructor?.trim() || null,
         descripcion?.trim() || null,
-        id
+        id,
+        lugar_id
       ]
     );
 
@@ -1013,13 +1192,24 @@ router.put('/excepcion/:id', async (req, res) => {
 });
 
 // ELIMINAR UN HORARIO ESPECIAL INDIVIDUAL
-router.delete('/excepcion/:id', async (req, res) => {
+router.delete('/excepcion/:id', verificarToken, soloAdmin, async (req, res) => {
   try {
     const { id } = req.params;
 
+    const lugar_id = await obtenerLugarAdmin(req.usuario.id);
+
+    if (!lugar_id) {
+      return res.status(404).json({
+        error: 'No tienes un lugar asignado'
+      });
+    }
+
     const excepcion = await pool.query(
-      'SELECT fecha, hora_inicio FROM horarios_excepciones WHERE id = $1',
-      [id]
+      `SELECT fecha, hora_inicio
+      FROM horarios_excepciones
+      WHERE id = $1
+        AND lugar_id = $2`,
+      [id, lugar_id]
     );
 
     if (excepcion.rows.length === 0) {
@@ -1048,8 +1238,10 @@ router.delete('/excepcion/:id', async (req, res) => {
     }
 
     await pool.query(
-      'DELETE FROM horarios_excepciones WHERE id = $1',
-      [id]
+      `DELETE FROM horarios_excepciones
+      WHERE id = $1
+        AND lugar_id = $2`,
+      [id, lugar_id]
     );
 
     res.json({
