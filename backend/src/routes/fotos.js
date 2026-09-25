@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { Pool } = require('pg');
 const { upload, eliminarImagen } = require('../cloudinary');
+const { verificarToken, soloAdmin } = require('../middleware/auth');
 
 const pool = new Pool({
   host: process.env.DB_HOST,
@@ -13,9 +14,20 @@ const pool = new Pool({
 
 // SUBIR FOTO
 
-router.post('/:lugar_id', upload.single('foto'), async (req, res) => {
+router.post('/:lugar_id', verificarToken, soloAdmin, upload.single('foto'), async (req, res) => {
   try {
-    const { lugar_id } = req.params;
+    const lugarResult = await pool.query(
+      'SELECT id FROM lugares WHERE admin_id = $1',
+      [req.usuario.id]
+    );
+
+    if (lugarResult.rows.length === 0) {
+      return res.status(404).json({
+        error: 'No tienes un lugar asignado'
+      });
+    }
+
+    const lugar_id = lugarResult.rows[0].id;
 
     if (!req.file) {
       return res.status(400).json({
@@ -92,15 +104,17 @@ router.get('/:lugar_id', async (req, res) => {
   
 // ELIMINAR FOTO
   
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', verificarToken, soloAdmin, async (req, res) => {
   try {
     const { id } = req.params;
 
     const fotoResult = await pool.query(
-      `SELECT public_id, url, lugar_id
-       FROM fotos_lugares
-       WHERE id = $1`,
-      [id]
+      `SELECT f.public_id, f.url, f.lugar_id
+      FROM fotos_lugares f
+      JOIN lugares l ON l.id = f.lugar_id
+      WHERE f.id = $1
+        AND l.admin_id = $2`,
+      [id, req.usuario.id]
     );
 
     if (fotoResult.rows.length === 0) {
@@ -165,7 +179,7 @@ router.delete('/:id', async (req, res) => {
   
 // REORDENAR FOTOS
   
-router.put('/orden', async (req, res) => {
+router.put('/orden', verificarToken, soloAdmin, async (req, res) => {
   try {
     const { fotos } = req.body;
 
@@ -177,10 +191,12 @@ router.put('/orden', async (req, res) => {
 
     // Obtener el lugar al que pertenecen las fotos
     const primeraFoto = await pool.query(
-      `SELECT lugar_id
-       FROM fotos_lugares
-       WHERE id = $1`,
-      [fotos[0].id]
+      `SELECT f.lugar_id
+      FROM fotos_lugares f
+      JOIN lugares l ON l.id = f.lugar_id
+      WHERE f.id = $1
+        AND l.admin_id = $2`,
+      [fotos[0].id, req.usuario.id]
     );
 
     if (primeraFoto.rows.length === 0) {
@@ -220,16 +236,26 @@ router.put('/orden', async (req, res) => {
     }
 
     // La foto número 1 siempre es la portada
+    const portadaResult = await pool.query(
+      `SELECT url
+      FROM fotos_lugares
+      WHERE id = $1
+        AND lugar_id = $2`,
+      [fotos[0].id, lugar_id]
+    );
+
+    const portada = portadaResult.rows[0].url;
+
     await pool.query(
       `UPDATE lugares
-       SET foto_url = $1
-       WHERE id = $2`,
-      [fotos[0].url, lugar_id]
+      SET foto_url = $1
+      WHERE id = $2`,
+      [portada, lugar_id]
     );
 
     res.json({
       mensaje: 'Orden de fotos actualizado',
-      portada: fotos[0].url
+      portada
     });
 
   } catch (err) {
