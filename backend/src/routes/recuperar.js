@@ -4,6 +4,7 @@ const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const { Pool } = require('pg');
 const { enviarEmail } = require('../email');
+const { recuperarLimiter } = require('../middleware/rateLimit');
 
 const pool = new Pool({
   host: process.env.DB_HOST,
@@ -17,7 +18,7 @@ const pool = new Pool({
 const tokens = {};
 
 // SOLICITAR RECUPERACION
-router.post('/solicitar', async (req, res) => {
+router.post('/solicitar', recuperarLimiter, async (req, res) => {
   try {
     const { correo } = req.body;
     const result = await pool.query('SELECT * FROM usuarios WHERE correo = $1', [correo]);
@@ -48,7 +49,7 @@ router.post('/solicitar', async (req, res) => {
 });
 
 // VERIFICAR TOKEN Y CAMBIAR CONTRASENA
-router.post('/cambiar', async (req, res) => {
+router.post('/cambiar', recuperarLimiter, async (req, res) => {
   try {
     const { correo, token, nueva } = req.body;
     const registro = tokens[correo];

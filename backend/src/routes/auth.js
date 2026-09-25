@@ -5,6 +5,10 @@ const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const { Pool } = require('pg');
 const { enviarEmail } = require('../email');
+const {
+  loginLimiter,
+  registroLimiter
+} = require('../middleware/rateLimit');
 
 const pool = new Pool({
   host: process.env.DB_HOST,
@@ -30,7 +34,7 @@ const limpiarTokensExpirados = async () => {
 setInterval(limpiarTokensExpirados, 30 * 60 * 1000);
 
 // REGISTRO
-router.post('/registro', async (req, res) => {
+router.post('/registro', registroLimiter, async (req, res) => {
   const { nombre, apellido, correo, contrasena, acepto_terminos } = req.body;
 
   const correoNormalizado = correo?.trim().toLowerCase();
@@ -108,7 +112,7 @@ router.post('/registro', async (req, res) => {
 });
 
 // VERIFICAR CORREO
-router.post('/verificar', async (req, res) => {
+router.post('/verificar', registroLimiter, async (req, res) => {
   const { correo, token } = req.body;
 
   const correoNormalizado = correo?.trim().toLowerCase();
@@ -177,7 +181,7 @@ router.post('/verificar', async (req, res) => {
 });
 
 // LOGIN
-router.post('/login', async (req, res) => {
+router.post('/login', loginLimiter, async (req, res) => {
   const { correo, contrasena } = req.body;
 
   const correoNormalizado = correo?.trim().toLowerCase();
