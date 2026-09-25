@@ -28,20 +28,44 @@ router.get('/:id/horarios', async (req, res) => {
     const { id } = req.params;
 
     const result = await pool.query(
-      `SELECT *
-       FROM horarios_plantilla
-       WHERE lugar_id = $1
-       ORDER BY
-         CASE dia
-           WHEN 'Lunes' THEN 1
-           WHEN 'Martes' THEN 2
-           WHEN 'Miércoles' THEN 3
-           WHEN 'Jueves' THEN 4
-           WHEN 'Viernes' THEN 5
-           WHEN 'Sábado' THEN 6
-           WHEN 'Domingo' THEN 7
-         END,
-         hora_inicio ASC`,
+      `SELECT h.*,
+        (
+          SELECT COUNT(*)
+          FROM reservas r
+          WHERE r.horario_id = h.id
+            AND r.fecha = CURRENT_DATE + (
+              (
+                CASE h.dia
+                  WHEN 'Domingo' THEN 0
+                  WHEN 'Lunes' THEN 1
+                  WHEN 'Martes' THEN 2
+                  WHEN 'Miércoles' THEN 3
+                  WHEN 'Jueves' THEN 4
+                  WHEN 'Viernes' THEN 5
+                  WHEN 'Sábado' THEN 6
+                END
+              ) - EXTRACT(DOW FROM CURRENT_DATE)::int + 7
+            ) % 7
+        ) AS reservados,
+        (
+          SELECT COUNT(*)
+          FROM reservas r
+          WHERE r.horario_id = h.id
+            AND r.fecha >= CURRENT_DATE
+        ) AS reservas_activas
+      FROM horarios_plantilla h
+      WHERE h.lugar_id = $1
+      ORDER BY
+        CASE h.dia
+          WHEN 'Lunes' THEN 1
+          WHEN 'Martes' THEN 2
+          WHEN 'Miércoles' THEN 3
+          WHEN 'Jueves' THEN 4
+          WHEN 'Viernes' THEN 5
+          WHEN 'Sábado' THEN 6
+          WHEN 'Domingo' THEN 7
+        END,
+        h.hora_inicio ASC`,
       [id]
     );
 
