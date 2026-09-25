@@ -73,7 +73,7 @@ export default function DetalleLugar() {
 
   useEffect(() => {
     API.get(`/lugares/${id}`).then(res => setLugar(res.data)).catch(() => {});
-    API.get(`/admin/horarios/${id}`).then(res => setHorarios(res.data)).catch(() => {});
+    API.get(`/lugares/${id}/horarios`).then(res => setHorarios(res.data)).catch(() => {});
     API.get(`/lugares/excepciones/lugar/${id}`).then(res => setExcepciones(res.data)).catch(() => {});
     API.get(`/fotos/${id}`).then(res => setFotos(res.data)).catch(() => {});
     API.get(`/inscripciones/usuario/${usuario.id}`).then(res => {
@@ -185,7 +185,7 @@ export default function DetalleLugar() {
         setExcepciones(actualizadas.data);
       } else {
         const actualizados = await API.get(
-          `/admin/horarios/${id}`
+          `/lugares/${id}/horarios`
         );
         setHorarios(actualizados.data);
       }
@@ -229,7 +229,7 @@ export default function DetalleLugar() {
         setExcepciones(actualizadas.data);
       } else {
         const actualizados = await API.get(
-          `/admin/horarios/${id}`
+          `/lugares/${id}/horarios`
         );
         setHorarios(actualizados.data);
       }
