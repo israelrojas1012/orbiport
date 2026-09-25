@@ -203,7 +203,7 @@ router.post('/todos', verificarToken, soloAdmin, async (req, res) => {
 });
 
 // OBTENER PENALIZACIONES DE UN USUARIO EN UN LUGAR
-router.get('/penalizaciones/:usuario_id/:lugar_id', async (req, res) => {
+router.get('/penalizaciones/:usuario_id/:lugar_id', verificarToken, soloAdmin, async (req, res) => {
   try {
     const { usuario_id, lugar_id } = req.params;
     const result = await pool.query(`
@@ -224,7 +224,7 @@ router.get('/penalizaciones/:usuario_id/:lugar_id', async (req, res) => {
 });
 
 // REGISTRAR PAGO PARCIAL O TOTAL
-router.put('/penalizaciones/:id/pago', async (req, res) => {
+router.put('/penalizaciones/:id/pago', verificarToken, soloAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const { monto_pagado } = req.body;
@@ -247,7 +247,7 @@ router.put('/penalizaciones/:id/pago', async (req, res) => {
 });
 
 // OBTENER TODAS LAS PENALIZACIONES DE UN LUGAR
-router.get('/penalizaciones/lugar/:lugar_id', async (req, res) => {
+router.get('/penalizaciones/lugar/:lugar_id', verificarToken, soloAdmin, async (req, res) => {
   console.log('>>> Entrando a penalizaciones/lugar', req.params.lugar_id);
   try {
     const { lugar_id } = req.params;
@@ -277,7 +277,7 @@ router.get('/penalizaciones/lugar/:lugar_id', async (req, res) => {
 });
 
 // RESUMEN DE SALDOS POR USUARIO EN UN LUGAR
-router.get('/saldos/:lugar_id', async (req, res) => {
+router.get('/saldos/:lugar_id', verificarToken, soloAdmin, async (req, res) => {
   try {
     const { lugar_id } = req.params;
     const result = await pool.query(`
@@ -302,7 +302,7 @@ router.get('/saldos/:lugar_id', async (req, res) => {
 });
 
 // REGISTRAR PAGO LIBRE (monto personalizado)
-router.put('/saldos/:usuario_id/:lugar_id/pago', async (req, res) => {
+router.put('/saldos/:usuario_id/:lugar_id/pago', verificarToken, soloAdmin, async (req, res) => {
   try {
     const { usuario_id, lugar_id } = req.params;
     const { monto_pagado } = req.body;
@@ -466,7 +466,7 @@ router.get('/historial-pagos/:usuario_id/:lugar_id', verificarToken, soloAdmin, 
 });
 
 // OBTENER HORARIOS DE UN DIA (incluye horarios especiales)
-router.get('/horarios-dia/:lugar_id/:fecha', async (req, res) => {
+router.get('/horarios-dia/:lugar_id/:fecha', verificarToken, soloAdmin, async (req, res) => {
   try {
     const { lugar_id, fecha } = req.params;
 
@@ -522,7 +522,7 @@ router.get('/horarios-dia/:lugar_id/:fecha', async (req, res) => {
 });
 
 // OBTENER RESERVAS DE UN HORARIO ESPECIFICO (normal o especial)
-router.get('/horario/:horario_id/:fecha', async (req, res) => {
+router.get('/horario/:horario_id/:fecha', verificarToken, soloAdmin, async (req, res) => {
   try {
     const { horario_id, fecha } = req.params;
     const result = await pool.query(`
