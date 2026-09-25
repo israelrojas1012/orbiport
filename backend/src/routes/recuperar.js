@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 const { Pool } = require('pg');
 const { enviarEmail } = require('../email');
 
@@ -23,7 +24,7 @@ router.post('/solicitar', async (req, res) => {
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'No existe una cuenta con ese correo' });
     }
-    const token = Math.random().toString(36).substring(2, 8).toUpperCase();
+    const token = crypto.randomInt(100000, 1000000).toString();
     tokens[correo] = { token, expira: Date.now() + 15 * 60 * 1000 };
     await enviarEmail(
       correo,
@@ -52,8 +53,13 @@ router.post('/cambiar', async (req, res) => {
     const { correo, token, nueva } = req.body;
     const registro = tokens[correo];
     if (!registro) return res.status(400).json({ error: 'No hay solicitud activa para este correo' });
-    if (registro.token !== token.toUpperCase()) return res.status(400).json({ error: 'Codigo incorrecto' });
-    if (Date.now() > registro.expira) return res.status(400).json({ error: 'El codigo ha expirado' });
+    if (!token || registro.token !== String(token).toUpperCase()) {
+      return res.status(400).json({ error: 'Codigo incorrecto' });
+    }
+    if (Date.now() > registro.expira) {
+      delete tokens[correo];
+      return res.status(400).json({ error: 'El codigo ha expirado' });
+    }
     const hash = await bcrypt.hash(nueva, 10);
     await pool.query('UPDATE usuarios SET contrasena = $1 WHERE correo = $2', [hash, correo]);
     delete tokens[correo];

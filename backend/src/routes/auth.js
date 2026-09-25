@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const { Pool } = require('pg');
 const { enviarEmail } = require('../email');
 
@@ -67,10 +68,7 @@ router.post('/registro', async (req, res) => {
 
     const hash = await bcrypt.hash(contrasena, 10);
 
-    const token = Math.random()
-      .toString(36)
-      .substring(2, 8)
-      .toUpperCase();
+    const token = crypto.randomInt(100000, 1000000).toString();
 
     // Guardar token en base de datos
     await pool.query(
