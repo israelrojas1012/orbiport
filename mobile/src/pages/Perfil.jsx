@@ -154,7 +154,7 @@ export default function Perfil() {
       setCargandoHistorial(true);
 
       const res = await API.get(
-        `/asistencia/historial-pagos/${usuario.id}`
+        '/asistencia/historial-pagos/me'
       );
 
       setHistorialPagos(res.data);

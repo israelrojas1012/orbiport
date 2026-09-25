@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { Pool } = require('pg');
+const { verificarToken, soloAdmin } = require('../middleware/auth');
 
 const pool = new Pool({
   host: process.env.DB_HOST,
@@ -69,7 +70,7 @@ const puedePasarLista = (fecha, hora_inicio) => {
 };
 
 // OBTENER RESERVAS DE UN HORARIO Y FECHA PARA PASAR LISTA
-router.get('/lista/:lugar_id/:fecha', async (req, res) => {
+router.get('/lista/:lugar_id/:fecha', verificarToken, soloAdmin, async (req, res) => {
   try {
     const { lugar_id, fecha } = req.params;
     const result = await pool.query(`
@@ -94,7 +95,7 @@ router.get('/lista/:lugar_id/:fecha', async (req, res) => {
 });
 
 // MARCAR ASISTENCIA INDIVIDUAL
-router.post('/marcar', async (req, res) => {
+router.post('/marcar', verificarToken, soloAdmin, async (req, res) => {
   try {
     const { reserva_id, usuario_id, lugar_id, fecha, asistio } = req.body;
 
@@ -166,7 +167,7 @@ router.post('/marcar', async (req, res) => {
 });
 
 // MARCAR TODOS COMO ASISTIERON
-router.post('/todos', async (req, res) => {
+router.post('/todos', verificarToken, soloAdmin, async (req, res) => {
   try {
     const { lugar_id, fecha } = req.body;
     const reservas = await pool.query(`
@@ -343,9 +344,9 @@ router.put('/saldos/:usuario_id/:lugar_id/pago', async (req, res) => {
 });
 
 // HISTORIAL DE PAGOS COMPLETO DE UN USUARIO
-router.get('/historial-pagos/:usuario_id', async (req, res) => {
+router.get('/historial-pagos/:usuario_id', verificarToken, async (req, res) => {
   try {
-    const { usuario_id } = req.params;
+    const usuario_id = req.usuario.id;
 
     const result = await pool.query(`
       SELECT
@@ -404,7 +405,7 @@ router.get('/historial-pagos/:usuario_id', async (req, res) => {
 
 
 // HISTORIAL DE PAGOS DE UN USUARIO EN UN LUGAR
-router.get('/historial-pagos/:usuario_id/:lugar_id', async (req, res) => {
+router.get('/historial-pagos/:usuario_id/:lugar_id', verificarToken, soloAdmin, async (req, res) => {
   try {
     const { usuario_id, lugar_id } = req.params;
 
@@ -541,7 +542,7 @@ router.get('/horario/:horario_id/:fecha', async (req, res) => {
 });
 
 // OBTENER PERSONAS RESERVADAS EN UN HORARIO (vista cliente) - normal o especial
-router.get('/personas/:horario_id/:fecha', async (req, res) => {
+router.get('/personas/:horario_id/:fecha', verificarToken, async (req, res) => {
   try {
     const { horario_id, fecha } = req.params;
 
@@ -549,7 +550,6 @@ router.get('/personas/:horario_id/:fecha', async (req, res) => {
       SELECT
         u.nombre,
         u.apellido,
-        u.correo,
         u.nickname,
         u.avatar
       FROM reservas r
